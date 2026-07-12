@@ -1,7 +1,9 @@
 {
   "domain": "felicity_solar_local",
   "name": "Felicity Solar Local",
-  "codeowners": ["@fabiomatavelli"],
+  "codeowners": [
+    "@fabiomatavelli"
+  ],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/fabiomatavelli/felicity_solar_local_hacs",
@@ -9,5 +11,5 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/fabiomatavelli/felicity_solar_local_hacs/issues",
   "requirements": [],
-  "version": "0.0.0"
+  "version": "0.1.0"
 }
