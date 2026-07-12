@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/fabiomatavelli/ha-felicity-solar-local/compare/v0.2.0...v0.2.1) (2026-07-12)
+
+
+### Bug Fixes
+
+* use literal state text instead of [%key:%] references ([32fc3d3](https://github.com/fabiomatavelli/ha-felicity-solar-local/commit/32fc3d3817a645064c6cdbe3bc400ca3eb3de9e2))
+* use literal state text instead of [%key:%] references ([9591f25](https://github.com/fabiomatavelli/ha-felicity-solar-local/commit/9591f252f5faa3a69e7d82e017c5aec09e18b3e1))
+
 ## [0.2.0](https://github.com/fabiomatavelli/ha-felicity-solar-local/compare/v0.1.0...v0.2.0) (2026-07-12)
 
 
