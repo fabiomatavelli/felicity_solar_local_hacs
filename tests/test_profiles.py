@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
+
 from custom_components.felicity_solar_local.profiles import (
     DEFAULT_PROFILE,
     FLB48314TG1H_PROFILE,
@@ -77,3 +79,33 @@ def test_default_profile_uses_same_shape(sample_response: dict[str, Any]) -> Non
     assert data["voltage"] == 54.04
     assert DEFAULT_PROFILE.confidence == "best_effort"
     assert FLB48314TG1H_PROFILE.confidence == "verified"
+
+
+@pytest.mark.parametrize(
+    ("bstate", "expected"),
+    [
+        (320, "standby"),  # bits 6,8 only - neither 12 nor 13 set
+        (832, "standby"),  # bits 6,8,9 - neither 12 nor 13 set
+        (4416, "discharging"),  # bit 12 set, bit 13 clear
+        (4928, "discharging"),
+        (5056, "discharging"),
+        (9024, "charging"),  # bit 13 set
+        (9152, "charging"),  # tests/fixtures/sample_response.json's actual value
+        (0, "standby"),
+    ],
+)
+def test_parse_decodes_charging_state_from_bstate_bitmask(
+    sample_response: dict[str, Any], bstate: int, expected: str
+) -> None:
+    modified = {**sample_response, "Bstate": bstate}
+    data = FLB48314TG1H_PROFILE.parse(modified)
+    assert data["charging_state"] == expected
+
+
+def test_parse_charging_state_is_none_when_bstate_is_sentinel(
+    sample_response: dict[str, Any],
+) -> None:
+    modified = {**sample_response, "Bstate": 65535}
+    data = FLB48314TG1H_PROFILE.parse(modified)
+    assert data["state"] is None
+    assert data["charging_state"] is None

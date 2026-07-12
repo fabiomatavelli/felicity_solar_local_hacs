@@ -58,6 +58,27 @@ def _raw(data: dict[str, Any], key: str) -> Any:
     return None if value in _SENTINELS else value
 
 
+# Bstate bitmask flags. Bit 14 (heating) is a separate flag and intentionally not
+# decoded here.
+_BSTATE_DISCHARGING_BIT = 1 << 12
+_BSTATE_CHARGING_BIT = 1 << 13
+
+
+def _charging_state(bstate: Any) -> str | None:
+    """Decode charging/discharging/standby from the Bstate bitmask register.
+
+    Bit 13 set -> charging. Bit 12 set (with bit 13 clear) -> discharging. Neither set ->
+    standby. Returns None if Bstate itself is missing/sentinel (see _raw()).
+    """
+    if not isinstance(bstate, int):
+        return None
+    if bstate & _BSTATE_CHARGING_BIT:
+        return "charging"
+    if bstate & _BSTATE_DISCHARGING_BIT:
+        return "discharging"
+    return "standby"
+
+
 def parse_common(raw: dict[str, Any]) -> dict[str, Any]:
     """Parse the fields verified against the FLB48314TG1-H.
 
@@ -69,11 +90,13 @@ def parse_common(raw: dict[str, Any]) -> dict[str, Any]:
     """
     voltage = _scaled(raw, "BattList", 0, 0, 1000)
     current = _scaled(raw, "BattList", 1, 0, 10)
+    bstate = _raw(raw, "Bstate")
 
     data: dict[str, Any] = {
         "voltage": voltage,
         "current": current,
         "power": round(voltage * current, 2) if voltage is not None and current is not None else None,
+        "charging_state": _charging_state(bstate),
         "soc": _scaled(raw, "BatsocList", 0, 0, 100),
         "soh": _scaled(raw, "BatsocList", 0, 1, 10),
         "capacity": _scaled(raw, "BatsocList", 0, 2, 1000),
@@ -91,7 +114,7 @@ def parse_common(raw: dict[str, Any]) -> dict[str, Any]:
         "discharge_current_limit": _scaled(raw, "BLVolCu", 1, 1, 10),
         "serial_number": _raw(raw, "DevSN"),
         "estate": _raw(raw, "Estate"),
-        "state": _raw(raw, "Bstate"),
+        "state": bstate,
         "fault": _raw(raw, "Bfault"),
         "warning": _raw(raw, "Bwarn"),
         "bms_fault": _raw(raw, "BBfault"),
@@ -138,6 +161,12 @@ _COMMON_SENSORS: tuple[SensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfPower.WATT,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
+    ),
+    SensorEntityDescription(
+        key="charging_state",
+        translation_key="charging_state",
+        device_class=SensorDeviceClass.ENUM,
+        options=["charging", "discharging", "standby"],
     ),
     SensorEntityDescription(
         key="soc",
