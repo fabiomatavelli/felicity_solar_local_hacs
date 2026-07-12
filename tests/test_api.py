@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import socket
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -121,7 +122,15 @@ async def test_async_get_data_raises_on_read_timeout(fake_server: _FakeServer) -
 
 
 async def test_async_get_data_raises_on_connection_refused() -> None:
-    # Nothing is listening on this port.
-    client = FelicityLocalClient("127.0.0.1", 1, timeout=1.0)
+    # Bind a real socket and close it immediately: connecting to the just-freed port
+    # deterministically yields a fast connection-refused everywhere. An arbitrary
+    # unbound port number (e.g. a low privileged one) isn't reliable for this across
+    # platforms/Python versions - some environments don't refuse it promptly.
+    probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    probe.bind(("127.0.0.1", 0))
+    port = probe.getsockname()[1]
+    probe.close()
+
+    client = FelicityLocalClient("127.0.0.1", port, timeout=2.0)
     with pytest.raises(FelicityConnectionError):
         await client.async_get_data()

@@ -23,7 +23,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.12", "3.13"]
+        # Keep this in sync with Home Assistant core's own minimum supported Python
+        # version (currently 3.13+) - older interpreters aren't a real target since HA
+        # itself won't run this integration on them.
+        python-version: ["3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
