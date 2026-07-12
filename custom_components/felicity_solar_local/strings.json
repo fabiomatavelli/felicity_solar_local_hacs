@@ -41,6 +41,14 @@
       "voltage": { "name": "Voltage" },
       "current": { "name": "Current" },
       "power": { "name": "Power" },
+      "charging_state": {
+        "name": "Charging state",
+        "state": {
+          "charging": "[%key:common::state::charging%]",
+          "discharging": "[%key:common::state::discharging%]",
+          "standby": "[%key:common::state::standby%]"
+        }
+      },
       "soc": { "name": "State of charge" },
       "soh": { "name": "State of health" },
       "capacity": { "name": "Capacity" },
