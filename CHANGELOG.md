@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.0](https://github.com/fabiomatavelli/ha-felicity-solar-local/compare/v0.1.0...v0.2.0) (2026-07-12)
+
+
+### Features
+
+* **api:** add configurable persistent TCP connection ([d586459](https://github.com/fabiomatavelli/ha-felicity-solar-local/commit/d5864595fe34dc5ab74a951bbf1eb473b184f428))
+* default to a persistent connection with faster polling and OS keepalive ([b6bb290](https://github.com/fabiomatavelli/ha-felicity-solar-local/commit/b6bb29070d1617e8c511650c4dea9134c32ddbf1))
+* default to a persistent connection with faster polling and OS keepalive ([ec9f23f](https://github.com/fabiomatavelli/ha-felicity-solar-local/commit/ec9f23fc6b2a265d5f9e80f54725997f9829de4f))
+* **profiles:** add charging_state enum sensor decoded from Bstate ([83c1b35](https://github.com/fabiomatavelli/ha-felicity-solar-local/commit/83c1b35d4895cc86e1d89d6820c60b6d7c6f83b8))
+* **profiles:** add charging_state enum sensor decoded from Bstate ([5728529](https://github.com/fabiomatavelli/ha-felicity-solar-local/commit/572852920810264bda301ca396f3a8d1de3b268b))
+
 ## 0.1.0 (2026-07-12)
 
 
