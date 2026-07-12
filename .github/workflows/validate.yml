@@ -21,6 +21,7 @@ jobs:
       - uses: hacs/action@main
         with:
           category: integration
-          # No logo/icon submitted to home-assistant/brands yet - that's a separate PR
-          # to an external repo, tracked as follow-up work rather than blocking CI here.
+          # The icon ships directly in custom_components/felicity_solar_local/brand/
+          # (supported since HA 2026.3.0) instead of the legacy home-assistant/brands
+          # repo submission - skip this check since it only knows about the old path.
           ignore: brands

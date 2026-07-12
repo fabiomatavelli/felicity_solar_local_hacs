@@ -60,6 +60,11 @@ python3 scripts/probe.py <battery-ip>
 
 ## 🔋 Battery model support
 
+| Model | Type / SubType | Status | Notes |
+|---|---|---|---|
+| Felicity Solar FLB48314TG1-H | 112 / 7353 | ✅ Verified | Field scaling cross-checked live against the same battery's cloud API readings. See `profiles.py`. |
+| Other Felicity WiFi batteries | — | ⚠️ Untested (best-effort) | Same protocol assumed, falls back to a generic profile with unverified scaling. [Contribute a verified profile](CONTRIBUTING.md#adding-a-new-battery-model-profile) for your model. |
+
 This integration was built and verified against a **Felicity Solar FLB48314TG1-H**
 (`Type=112, SubType=7353`). Field names/scaling were cross-checked live against the same
 battery's readings from Felicity's cloud API - see `custom_components/felicity_solar_local/profiles.py`
