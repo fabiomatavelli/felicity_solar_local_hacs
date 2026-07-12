@@ -18,12 +18,15 @@ from .api import (
 )
 from .const import (
     CONF_HOST,
+    CONF_PERSISTENT_CONNECTION,
     CONF_PORT,
     CONF_UPDATE_INTERVAL,
+    DEFAULT_PERSISTENT_CONNECTION,
     DEFAULT_PORT,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
     MIN_UPDATE_INTERVAL,
+    MIN_UPDATE_INTERVAL_PERSISTENT,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -78,6 +81,8 @@ class FelicityLocalConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     title=title,
                     data={CONF_HOST: host, CONF_PORT: port},
                 )
+            finally:
+                await client.async_close()
 
         return self.async_show_form(
             step_id="user",
@@ -100,18 +105,37 @@ class FelicityLocalOptionsFlow(config_entries.OptionsFlow):
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Manage the update interval option."""
-        if user_input is not None:
-            return self.async_create_entry(data=user_input)
-
-        current = self.config_entry.options.get(
+        """Manage the update interval and persistent-connection options."""
+        errors: dict[str, str] = {}
+        current_interval = self.config_entry.options.get(
             CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL
         )
+        current_persistent = self.config_entry.options.get(
+            CONF_PERSISTENT_CONNECTION, DEFAULT_PERSISTENT_CONNECTION
+        )
+
+        if user_input is not None:
+            interval = int(user_input[CONF_UPDATE_INTERVAL])
+            persistent = bool(user_input[CONF_PERSISTENT_CONNECTION])
+
+            if not persistent and interval < MIN_UPDATE_INTERVAL:
+                errors["base"] = "interval_too_low_for_one_shot"
+            else:
+                return self.async_create_entry(data=user_input)
+
+            current_interval = interval
+            current_persistent = persistent
+
         schema = vol.Schema(
             {
-                vol.Required(CONF_UPDATE_INTERVAL, default=current): selector.NumberSelector(
+                vol.Required(
+                    CONF_PERSISTENT_CONNECTION, default=current_persistent
+                ): selector.BooleanSelector(),
+                vol.Required(
+                    CONF_UPDATE_INTERVAL, default=current_interval
+                ): selector.NumberSelector(
                     selector.NumberSelectorConfig(
-                        min=MIN_UPDATE_INTERVAL,
+                        min=MIN_UPDATE_INTERVAL_PERSISTENT,
                         max=3600,
                         unit_of_measurement="s",
                         mode=selector.NumberSelectorMode.BOX,
@@ -119,4 +143,4 @@ class FelicityLocalOptionsFlow(config_entries.OptionsFlow):
                 ),
             }
         )
-        return self.async_show_form(step_id="init", data_schema=schema)
+        return self.async_show_form(step_id="init", data_schema=schema, errors=errors)

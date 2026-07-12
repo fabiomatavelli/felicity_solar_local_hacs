@@ -9,8 +9,10 @@ from homeassistant.core import HomeAssistant
 
 from .const import (
     CONF_HOST,
+    CONF_PERSISTENT_CONNECTION,
     CONF_PORT,
     CONF_UPDATE_INTERVAL,
+    DEFAULT_PERSISTENT_CONNECTION,
     DEFAULT_UPDATE_INTERVAL,
 )
 from .coordinator import FelicityLocalCoordinator
@@ -27,6 +29,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: FelicityLocalConfigEntry
     host = entry.data[CONF_HOST]
     port = entry.data[CONF_PORT]
     update_interval = entry.options.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
+    persistent_connection = entry.options.get(
+        CONF_PERSISTENT_CONNECTION, DEFAULT_PERSISTENT_CONNECTION
+    )
 
     coordinator = FelicityLocalCoordinator(
         hass=hass,
@@ -34,6 +39,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: FelicityLocalConfigEntry
         host=host,
         port=port,
         update_interval=update_interval,
+        persistent_connection=persistent_connection,
     )
     await coordinator.async_config_entry_first_refresh()
 
@@ -46,7 +52,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: FelicityLocalConfigEntry
 
 async def async_unload_entry(hass: HomeAssistant, entry: FelicityLocalConfigEntry) -> bool:
     """Unload a config entry."""
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    await entry.runtime_data.client.async_close()
+    return unload_ok
 
 
 async def _async_update_listener(hass: HomeAssistant, entry: FelicityLocalConfigEntry) -> None:

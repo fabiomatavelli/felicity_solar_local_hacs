@@ -58,7 +58,11 @@ This integration isn't in the default HACS store yet, so it needs to be added as
 5. Repeat for each additional battery - one config entry per battery/IP.
 
 Update interval (default 30s, minimum 10s) can be changed afterwards from the integration's
-**Configure** button.
+**Configure** button. That dialog also has a **Keep connection open** toggle: by default the
+integration reconnects to the battery on every poll, but the battery's TCP server tolerates
+multiple queries on the same open connection, so enabling this keeps it open between polls
+(with automatic reconnect if it ever drops) and lowers the minimum interval to 5s for
+near-real-time updates.
 
 ### Confirming your battery works before setting up the integration
 
@@ -99,7 +103,9 @@ Reverse-engineered from [`mxbode/Felicitysolar-FLA48300-WiFi-Readout`](https://g
 is written in JavaScript; this integration is a fresh Python implementation based on the
 observed protocol facts, not a port of its code. In short: plain TCP on port `53970`, send
 `wifilocalMonitor:get dev real infor`, read the JSON reply up to its first `}`, then write a
-single `.` byte back as an acknowledgement.
+single `.` byte back as an acknowledgement. The device tolerates repeated queries on the same
+open connection, so with **Keep connection open** enabled the client reuses one connection
+across polls (transparently reconnecting if it goes stale) instead of reconnecting every time.
 
 ## 👨‍💻 Author
 

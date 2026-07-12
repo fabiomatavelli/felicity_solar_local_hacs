@@ -39,6 +39,7 @@ class FelicityLocalCoordinator(DataUpdateCoordinator[FelicityBatteryData]):
         host: str,
         port: int,
         update_interval: int,
+        persistent_connection: bool = False,
     ) -> None:
         super().__init__(
             hass,
@@ -49,7 +50,9 @@ class FelicityLocalCoordinator(DataUpdateCoordinator[FelicityBatteryData]):
         )
         self.host = host
         self.port = port
-        self.client = FelicityLocalClient(host, port, timeout=DEFAULT_TIMEOUT)
+        self.client = FelicityLocalClient(
+            host, port, timeout=DEFAULT_TIMEOUT, persistent=persistent_connection
+        )
 
     async def _async_update_data(self) -> FelicityBatteryData:
         try:

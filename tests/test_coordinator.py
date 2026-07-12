@@ -20,7 +20,9 @@ pytestmark = pytest.mark.asyncio
 API_PATH = "custom_components.felicity_solar_local.coordinator.FelicityLocalClient.async_get_data"
 
 
-def _make_coordinator(hass: HomeAssistant) -> FelicityLocalCoordinator:
+def _make_coordinator(
+    hass: HomeAssistant, persistent_connection: bool = False
+) -> FelicityLocalCoordinator:
     entry = MockConfigEntry(
         domain=DOMAIN,
         unique_id="test-serial",
@@ -33,6 +35,7 @@ def _make_coordinator(hass: HomeAssistant) -> FelicityLocalCoordinator:
         host="192.168.1.50",
         port=53970,
         update_interval=30,
+        persistent_connection=persistent_connection,
     )
 
 
@@ -59,3 +62,8 @@ async def test_update_data_raises_update_failed_on_client_error(
         pytest.raises(UpdateFailed),
     ):
         await coordinator._async_update_data()
+
+
+async def test_persistent_connection_flag_passed_to_client(hass: HomeAssistant) -> None:
+    assert _make_coordinator(hass, persistent_connection=False).client.persistent is False
+    assert _make_coordinator(hass, persistent_connection=True).client.persistent is True

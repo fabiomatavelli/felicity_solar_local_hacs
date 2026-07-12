@@ -18,6 +18,7 @@ from custom_components.felicity_solar_local.api import (
 )
 from custom_components.felicity_solar_local.const import (
     CONF_HOST,
+    CONF_PERSISTENT_CONNECTION,
     CONF_PORT,
     CONF_UPDATE_INTERVAL,
     DOMAIN,
@@ -99,8 +100,55 @@ async def test_options_flow_updates_interval(hass: HomeAssistant) -> None:
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {CONF_UPDATE_INTERVAL: 60}
+        result["flow_id"],
+        {CONF_UPDATE_INTERVAL: 60, CONF_PERSISTENT_CONNECTION: False},
     )
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert result["data"] == {CONF_UPDATE_INTERVAL: 60}
+    assert result["data"] == {
+        CONF_UPDATE_INTERVAL: 60,
+        CONF_PERSISTENT_CONNECTION: False,
+    }
+
+
+async def test_options_flow_rejects_low_interval_in_one_shot_mode(
+    hass: HomeAssistant,
+) -> None:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="test-serial",
+        data={CONF_HOST: "192.168.1.50", CONF_PORT: 53970},
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {CONF_UPDATE_INTERVAL: 5, CONF_PERSISTENT_CONNECTION: False},
+    )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "interval_too_low_for_one_shot"}
+
+
+async def test_options_flow_allows_low_interval_when_persistent(
+    hass: HomeAssistant,
+) -> None:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="test-serial",
+        data={CONF_HOST: "192.168.1.50", CONF_PORT: 53970},
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {CONF_UPDATE_INTERVAL: 5, CONF_PERSISTENT_CONNECTION: True},
+    )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"] == {
+        CONF_UPDATE_INTERVAL: 5,
+        CONF_PERSISTENT_CONNECTION: True,
+    }

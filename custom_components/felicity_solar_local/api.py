@@ -8,8 +8,11 @@ not a port of its code) and confirmed live against a Felicity Solar FLB48314TG1-
 - Write the ASCII command ``wifilocalMonitor:get dev real infor`` (no newline needed).
 - The device replies with a single JSON object. The payload never nests ``{}``, only ``[]``,
   so reading up to and including the first ``}`` yields the complete, valid JSON document.
-- After parsing, write a single ``.`` byte back to the device as an acknowledgement before
-  closing the connection - the device does not always send a clean EOF.
+- After parsing, write a single ``.`` byte back to the device as an acknowledgement.
+- The device's embedded TCP server tolerates multiple query/response round-trips on the same
+  open connection (confirmed manually via telnet), so this client can optionally keep the
+  connection open across calls (``persistent=True``) instead of reconnecting every time,
+  transparently reconnecting if the cached connection turns out to be stale/dead.
 """
 
 from __future__ import annotations
@@ -20,7 +23,13 @@ import json
 import logging
 from typing import Any
 
-from .const import ACK_BYTE, DEFAULT_PORT, DEFAULT_TIMEOUT, QUERY_COMMAND
+from .const import (
+    ACK_BYTE,
+    DEFAULT_PORT,
+    DEFAULT_TIMEOUT,
+    QUERY_COMMAND,
+    STRAY_BYTES_FLUSH_TIMEOUT,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -61,15 +70,54 @@ class FelicityLocalClient:
         host: str,
         port: int = DEFAULT_PORT,
         timeout: float = DEFAULT_TIMEOUT,
+        persistent: bool = False,
     ) -> None:
         self.host = host
         self.port = port
         self.timeout = timeout
+        self.persistent = persistent
+        self._reader: asyncio.StreamReader | None = None
+        self._writer: asyncio.StreamWriter | None = None
+        self._lock = asyncio.Lock()
 
     async def async_get_data(self) -> dict[str, Any]:
-        """Query the battery and return the parsed JSON payload."""
+        """Query the battery and return the parsed JSON payload.
+
+        In persistent mode, reuses the cached connection when possible and retries once
+        with a guaranteed-fresh connection if that fails. In one-shot mode (default),
+        behaves exactly as a single connect/query/close round-trip.
+        """
+        async with self._lock:
+            attempts = 2 if self.persistent else 1
+            last_err: FelicityLocalError | None = None
+            for _ in range(attempts):
+                try:
+                    if self._writer is None or self._writer.is_closing():
+                        await self._connect()
+                    elif self.persistent:
+                        await self._flush_stray_bytes()
+                    data = await self._query()
+                    self._validate(data)
+                except FelicityLocalError as err:
+                    last_err = err
+                    await self._disconnect()
+                    continue
+
+                if not self.persistent:
+                    await self._disconnect()
+                return data
+
+            assert last_err is not None
+            raise last_err
+
+    async def async_close(self) -> None:
+        """Close the connection, if any. Safe to call whether or not one is open."""
+        async with self._lock:
+            await self._disconnect()
+
+    async def _connect(self) -> None:
         try:
-            reader, writer = await asyncio.wait_for(
+            self._reader, self._writer = await asyncio.wait_for(
                 asyncio.open_connection(self.host, self.port),
                 timeout=self.timeout,
             )
@@ -82,27 +130,45 @@ class FelicityLocalClient:
                 f"Could not connect to {self.host}:{self.port}: {err}"
             ) from err
 
-        try:
-            data = await self._query(reader, writer)
-        finally:
-            writer.close()
-            with contextlib.suppress(TimeoutError, OSError):
-                await asyncio.wait_for(writer.wait_closed(), timeout=self.timeout)
+    async def _disconnect(self) -> None:
+        writer, self._writer = self._writer, None
+        self._reader = None
+        if writer is None:
+            return
+        writer.close()
+        with contextlib.suppress(TimeoutError, OSError):
+            await asyncio.wait_for(writer.wait_closed(), timeout=self.timeout)
 
-        voltage = _extract_path(data, _PACK_VOLTAGE_PATH)
-        if not voltage:
-            raise FelicityProtocolError(
-                f"Battery at {self.host}:{self.port} returned an invalid/empty snapshot "
-                f"(pack voltage missing or zero)"
+    async def _flush_stray_bytes(self) -> None:
+        """Best-effort: discard bytes left over from a previous response.
+
+        The device isn't guaranteed to stop sending exactly at the closing '}' (see the
+        trailing-bytes handling in _query()), so on a reused connection there may be stray
+        bytes still sitting in the read buffer from the prior round-trip. A short-timeout
+        read drains them before the next query; timing out here just means there was
+        nothing pending, which is the common case.
+        """
+        assert self._reader is not None
+        try:
+            leftover = await asyncio.wait_for(
+                self._reader.read(65536), timeout=STRAY_BYTES_FLUSH_TIMEOUT
+            )
+        except (TimeoutError, OSError):
+            return
+        if leftover:
+            _LOGGER.debug(
+                "Flushed %d stray byte(s) from %s:%s before next query",
+                len(leftover),
+                self.host,
+                self.port,
             )
 
-        return data
+    async def _query(self) -> dict[str, Any]:
+        writer = self._writer
+        reader = self._reader
+        assert writer is not None
+        assert reader is not None
 
-    async def _query(
-        self,
-        reader: asyncio.StreamReader,
-        writer: asyncio.StreamWriter,
-    ) -> dict[str, Any]:
         writer.write(QUERY_COMMAND)
         try:
             await asyncio.wait_for(writer.drain(), timeout=self.timeout)
@@ -149,3 +215,11 @@ class FelicityLocalClient:
             )
 
         return data
+
+    def _validate(self, data: dict[str, Any]) -> None:
+        voltage = _extract_path(data, _PACK_VOLTAGE_PATH)
+        if not voltage:
+            raise FelicityProtocolError(
+                f"Battery at {self.host}:{self.port} returned an invalid/empty snapshot "
+                f"(pack voltage missing or zero)"
+            )

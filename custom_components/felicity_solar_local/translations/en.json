@@ -24,9 +24,16 @@
     "step": {
       "init": {
         "data": {
+          "persistent_connection": "Keep connection open",
           "update_interval": "Update interval (seconds)"
+        },
+        "data_description": {
+          "persistent_connection": "Keep the TCP connection to the battery open between updates instead of reconnecting every time. Allows much faster polling (down to 5s) at the cost of holding a socket open on the battery's WiFi module."
         }
       }
+    },
+    "error": {
+      "interval_too_low_for_one_shot": "Update interval must be at least 10 seconds unless \"Keep connection open\" is enabled (which allows down to 5 seconds)."
     }
   },
   "entity": {
