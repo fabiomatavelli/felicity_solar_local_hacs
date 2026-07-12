@@ -44,9 +44,9 @@
       "charging_state": {
         "name": "Charging state",
         "state": {
-          "charging": "[%key:common::state::charging%]",
-          "discharging": "[%key:common::state::discharging%]",
-          "standby": "[%key:common::state::standby%]"
+          "charging": "Charging",
+          "discharging": "Discharging",
+          "standby": "Standby"
         }
       },
       "soc": { "name": "State of charge" },
