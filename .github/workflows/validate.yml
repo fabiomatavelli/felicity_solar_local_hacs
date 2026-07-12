@@ -21,3 +21,6 @@ jobs:
       - uses: hacs/action@main
         with:
           category: integration
+          # No logo/icon submitted to home-assistant/brands yet - that's a separate PR
+          # to an external repo, tracked as follow-up work rather than blocking CI here.
+          ignore: brands

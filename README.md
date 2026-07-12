@@ -8,7 +8,7 @@ your local network** - no cloud account, no internet dependency. It talks to the
 onboard WiFi module using its local TCP/JSON protocol.
 
 > Looking for the cloud-based integration instead (Shine/FSolar account, inverters + batteries)?
-> See [`felicity_solar_hacs`](https://github.com/fabiomatavelli/felicity_solar_hacs).
+> See [`felicity_solar_hacs`](https://github.com/matheustavarestrindade/felicity_solar_hacs).
 
 ## ✨ Features
 
