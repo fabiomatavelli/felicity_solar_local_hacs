@@ -28,7 +28,7 @@
           "update_interval": "Update interval (seconds)"
         },
         "data_description": {
-          "persistent_connection": "Keep the TCP connection to the battery open between updates instead of reconnecting every time. Allows much faster polling (down to 5s) at the cost of holding a socket open on the battery's WiFi module."
+          "persistent_connection": "Keep the TCP connection to the battery open between updates instead of reconnecting every time (this is the default). Allows much faster polling (down to 5s) at the cost of holding a socket open on the battery's WiFi module; the OS is asked to probe the connection while idle so a dropped connection is still detected between polls."
         }
       }
     },
