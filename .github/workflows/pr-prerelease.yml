@@ -1,0 +1,36 @@
+name: PR Prerelease
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  prerelease:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Zip integration
+        run: |
+          cd custom_components/felicity_solar_local
+          zip -r "${GITHUB_WORKSPACE}/felicity_solar_local.zip" .
+
+      - name: Publish prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: pr-${{ github.event.pull_request.number }}
+          name: "PR #${{ github.event.pull_request.number }} preview"
+          prerelease: true
+          target_commitish: ${{ github.event.pull_request.head.sha }}
+          body: |
+            Automated preview build of PR #${{ github.event.pull_request.number }}
+            (${{ github.event.pull_request.title }}).
+
+            Install for testing via HACS custom repository (pin to this release) or by
+            extracting `felicity_solar_local.zip` into `custom_components/felicity_solar_local`.
+
+            Not a stable release - will be replaced on every push to this PR.
+          files: felicity_solar_local.zip

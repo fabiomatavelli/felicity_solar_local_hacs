@@ -1,0 +1,24 @@
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+  "E", "F", "W",   # pycodestyle / pyflakes
+  "I",             # isort
+  "UP",            # pyupgrade
+  "B",             # bugbear
+  "SIM",           # simplify
+  "RUF",           # ruff-specific
+]
+ignore = [
+  "E501",  # line length is handled by the formatter where it matters
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["custom_components.felicity_solar_local"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]

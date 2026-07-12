@@ -1,0 +1,60 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to a Felicity Solar battery",
+        "description": "Enter the local IP address of the battery's WiFi module. It's queried over TCP on the local network - no cloud account needed.",
+        "data": {
+          "host": "Host (IP address)",
+          "port": "Port"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect to the battery. Check the IP address and that it's reachable on your network.",
+      "timeout": "The battery did not respond in time.",
+      "invalid_response": "The battery responded, but not with a valid/usable snapshot.",
+      "unknown": "Unexpected error."
+    },
+    "abort": {
+      "already_configured": "This battery is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "update_interval": "Update interval (seconds)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "voltage": { "name": "Voltage" },
+      "current": { "name": "Current" },
+      "power": { "name": "Power" },
+      "soc": { "name": "State of charge" },
+      "soh": { "name": "State of health" },
+      "capacity": { "name": "Capacity" },
+      "max_cell_voltage": { "name": "Max cell voltage" },
+      "min_cell_voltage": { "name": "Min cell voltage" },
+      "max_cell_number": { "name": "Max voltage cell number" },
+      "min_cell_number": { "name": "Min voltage cell number" },
+      "temperature": { "name": "Temperature {index}" },
+      "cell_voltage": { "name": "Cell {index} voltage" },
+      "charge_voltage_limit": { "name": "Charge voltage limit" },
+      "discharge_voltage_limit": { "name": "Discharge voltage limit" },
+      "charge_current_limit": { "name": "Charge current limit" },
+      "discharge_current_limit": { "name": "Discharge current limit" },
+      "serial_number": { "name": "Serial number" },
+      "estate": { "name": "Equipment state code" },
+      "state": { "name": "Battery state code" },
+      "fault": { "name": "Battery fault code" },
+      "warning": { "name": "Battery warning code" },
+      "bms_fault": { "name": "BMS fault code" },
+      "bms_warning": { "name": "BMS warning code" },
+      "raw_data": { "name": "Raw data" }
+    }
+  }
+}

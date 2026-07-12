@@ -1,0 +1,303 @@
+"""Battery model profiles: field mapping/scaling per Felicity Solar battery model.
+
+The local WiFi protocol (see api.py) returns the same *shape* of JSON across the Felicity
+battery family, but exact scaling/meaning has only been verified against a real
+FLB48314TG1-H (Type=112, SubType=7353) - cross-checked field-by-field against the same
+battery's readings from Felicity's cloud API. See the project README for the full
+verification table.
+
+Profiles are looked up by the device's self-reported ``Type``/``SubType`` codes, so adding
+support for another verified model later is a matter of adding one more ``BatteryProfile``
+to ``PROFILES`` - no changes needed in coordinator.py or sensor.py.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from typing import Any
+
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntityDescription,
+    SensorStateClass,
+)
+from homeassistant.const import (
+    PERCENTAGE,
+    UnitOfElectricCurrent,
+    UnitOfElectricPotential,
+    UnitOfPower,
+    UnitOfTemperature,
+)
+from homeassistant.helpers.entity import EntityCategory
+
+# Sentinel values the firmware uses to mean "this channel is not populated".
+_SENTINELS = (None, 65535, -1, 32767)
+
+CELL_COUNT = 16
+
+
+def _path(data: dict[str, Any], key: str, row: int, col: int) -> Any:
+    """Safely pull data[key][row][col], returning None if missing/short/wrong shape."""
+    try:
+        value = data[key][row][col]
+    except (KeyError, IndexError, TypeError):
+        return None
+    return None if value in _SENTINELS else value
+
+
+def _scaled(data: dict[str, Any], key: str, row: int, col: int, divisor: float) -> float | None:
+    value = _path(data, key, row, col)
+    if value is None:
+        return None
+    return round(value / divisor, 3)
+
+
+def _raw(data: dict[str, Any], key: str) -> Any:
+    value = data.get(key)
+    return None if value in _SENTINELS else value
+
+
+def parse_common(raw: dict[str, Any]) -> dict[str, Any]:
+    """Parse the fields verified against the FLB48314TG1-H.
+
+    Primary sensors are sourced from this pack's own per-pack readings (the ``*List``
+    fields, ``BLVolCu``, ``BMaxMin``, ``BTemp``) rather than the ``Batt``/``Batsoc``/
+    ``LVolCur`` bank-level aggregates, whose exact combination semantics (e.g. current
+    doesn't cleanly sum/double the way voltage and static limits do) weren't fully
+    resolved during live validation.
+    """
+    voltage = _scaled(raw, "BattList", 0, 0, 1000)
+    current = _scaled(raw, "BattList", 1, 0, 10)
+
+    data: dict[str, Any] = {
+        "voltage": voltage,
+        "current": current,
+        "power": round(voltage * current, 2) if voltage is not None and current is not None else None,
+        "soc": _scaled(raw, "BatsocList", 0, 0, 100),
+        "soh": _scaled(raw, "BatsocList", 0, 1, 10),
+        "capacity": _scaled(raw, "BatsocList", 0, 2, 1000),
+        "max_cell_voltage": _scaled(raw, "BMaxMin", 0, 0, 1000),
+        "min_cell_voltage": _scaled(raw, "BMaxMin", 0, 1, 1000),
+        "max_cell_number": _path(raw, "BMaxMin", 1, 0),
+        "min_cell_number": _path(raw, "BMaxMin", 1, 1),
+        "temperature_1": _scaled(raw, "BTemp", 0, 0, 10),
+        "temperature_2": _scaled(raw, "BTemp", 0, 1, 10),
+        "temperature_3": _scaled(raw, "BTemp", 1, 0, 10),
+        "temperature_4": _scaled(raw, "BTemp", 1, 1, 10),
+        "charge_voltage_limit": _scaled(raw, "BLVolCu", 0, 0, 10),
+        "discharge_voltage_limit": _scaled(raw, "BLVolCu", 0, 1, 10),
+        "charge_current_limit": _scaled(raw, "BLVolCu", 1, 0, 10),
+        "discharge_current_limit": _scaled(raw, "BLVolCu", 1, 1, 10),
+        "serial_number": _raw(raw, "DevSN"),
+        "estate": _raw(raw, "Estate"),
+        "state": _raw(raw, "Bstate"),
+        "fault": _raw(raw, "Bfault"),
+        "warning": _raw(raw, "Bwarn"),
+        "bms_fault": _raw(raw, "BBfault"),
+        "bms_warning": _raw(raw, "BBwarn"),
+    }
+
+    for i in range(CELL_COUNT):
+        data[f"cell_{i + 1}_voltage"] = _scaled(raw, "BatcelList", 0, i, 1000)
+
+    return data
+
+
+_DIAGNOSTIC_INT_SENSORS: tuple[SensorEntityDescription, ...] = tuple(
+    SensorEntityDescription(
+        key=key,
+        translation_key=key,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+    )
+    for key in ("estate", "state", "fault", "warning", "bms_fault", "bms_warning")
+)
+
+_COMMON_SENSORS: tuple[SensorEntityDescription, ...] = (
+    SensorEntityDescription(
+        key="voltage",
+        translation_key="voltage",
+        device_class=SensorDeviceClass.VOLTAGE,
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+    ),
+    SensorEntityDescription(
+        key="current",
+        translation_key="current",
+        device_class=SensorDeviceClass.CURRENT,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+    ),
+    SensorEntityDescription(
+        key="power",
+        translation_key="power",
+        device_class=SensorDeviceClass.POWER,
+        native_unit_of_measurement=UnitOfPower.WATT,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
+    ),
+    SensorEntityDescription(
+        key="soc",
+        translation_key="soc",
+        device_class=SensorDeviceClass.BATTERY,
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key="soh",
+        translation_key="soh",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    SensorEntityDescription(
+        key="capacity",
+        translation_key="capacity",
+        native_unit_of_measurement="Ah",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    SensorEntityDescription(
+        key="max_cell_voltage",
+        translation_key="max_cell_voltage",
+        device_class=SensorDeviceClass.VOLTAGE,
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=3,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    SensorEntityDescription(
+        key="min_cell_voltage",
+        translation_key="min_cell_voltage",
+        device_class=SensorDeviceClass.VOLTAGE,
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=3,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    SensorEntityDescription(
+        key="max_cell_number",
+        translation_key="max_cell_number",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key="min_cell_number",
+        translation_key="min_cell_number",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+    ),
+    *(
+        SensorEntityDescription(
+            key=f"temperature_{i + 1}",
+            translation_key="temperature",
+            translation_placeholders={"index": str(i + 1)},
+            device_class=SensorDeviceClass.TEMPERATURE,
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+            state_class=SensorStateClass.MEASUREMENT,
+        )
+        for i in range(4)
+    ),
+    SensorEntityDescription(
+        key="charge_voltage_limit",
+        translation_key="charge_voltage_limit",
+        device_class=SensorDeviceClass.VOLTAGE,
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key="discharge_voltage_limit",
+        translation_key="discharge_voltage_limit",
+        device_class=SensorDeviceClass.VOLTAGE,
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key="charge_current_limit",
+        translation_key="charge_current_limit",
+        device_class=SensorDeviceClass.CURRENT,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key="discharge_current_limit",
+        translation_key="discharge_current_limit",
+        device_class=SensorDeviceClass.CURRENT,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key="serial_number",
+        translation_key="serial_number",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    *(
+        SensorEntityDescription(
+            key=f"cell_{i + 1}_voltage",
+            translation_key="cell_voltage",
+            translation_placeholders={"index": str(i + 1)},
+            device_class=SensorDeviceClass.VOLTAGE,
+            native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+            state_class=SensorStateClass.MEASUREMENT,
+            suggested_display_precision=3,
+            entity_category=EntityCategory.DIAGNOSTIC,
+            entity_registry_enabled_default=False,
+        )
+        for i in range(CELL_COUNT)
+    ),
+    *_DIAGNOSTIC_INT_SENSORS,
+)
+
+
+@dataclass(frozen=True)
+class BatteryProfile:
+    """A named field mapping for one Felicity Solar battery model."""
+
+    name: str
+    confidence: str  # "verified" (checked against real hardware) or "best_effort"
+    type_code: int | None
+    subtype_code: int | None
+    sensors: tuple[SensorEntityDescription, ...] = _COMMON_SENSORS
+    parse: Callable[[dict[str, Any]], dict[str, Any]] = field(default=parse_common)
+
+    def matches(self, raw: dict[str, Any]) -> bool:
+        """Return True if this profile applies to the given raw response."""
+        if self.type_code is None:
+            return True
+        return raw.get("Type") == self.type_code and raw.get("SubType") == self.subtype_code
+
+
+FLB48314TG1H_PROFILE = BatteryProfile(
+    name="FLB48314TG1-H",
+    confidence="verified",
+    type_code=112,
+    subtype_code=7353,
+)
+
+# Fallback for any Felicity battery reporting a Type/SubType we haven't verified yet.
+# Same field shape/scaling as the verified profile (the protocol is believed to be shared
+# across the Felicity WiFi-battery family) but not confirmed against real hardware - treat
+# these values as best-effort and always check the raw_data diagnostic sensor.
+DEFAULT_PROFILE = BatteryProfile(
+    name="Generic Felicity Solar Battery",
+    confidence="best_effort",
+    type_code=None,
+    subtype_code=None,
+)
+
+PROFILES: tuple[BatteryProfile, ...] = (FLB48314TG1H_PROFILE,)
+
+
+def select_profile(raw: dict[str, Any]) -> BatteryProfile:
+    """Pick the best matching profile for a raw device response."""
+    for profile in PROFILES:
+        if profile.matches(raw):
+            return profile
+    return DEFAULT_PROFILE
