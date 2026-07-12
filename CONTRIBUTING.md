@@ -58,12 +58,6 @@ uses the PR title as the commit message on `main`, so a correctly formatted titl
   standing "Release PR" that aggregates unreleased Conventional Commits. Merging that PR bumps
   `manifest.json`'s version, tags the release, and publishes it - no manual version bumping.
 
-**One-time housekeeping after the very first release ships:** `release-please-config.json`
-currently pins `"release-as": "0.1.0"` to force the bootstrap release to `0.1.0` instead of
-release-please's default of `1.0.0` for a project's first release. Once that `v0.1.0` release
-has been published, remove the `release-as` key so normal commit-driven version bumping takes
-over for `v0.2.0`/`v1.0.0`/etc.
-
 ## Pull requests
 
 Keep PRs focused. Include tests for behavior changes. If you're changing scaling/field mapping
