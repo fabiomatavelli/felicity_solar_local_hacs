@@ -21,6 +21,14 @@ Every commit, in this repo without exception, uses **Conventional Commits**:
 changelogs. A `fix:` commit bumps patch, `feat:` bumps minor, a `BREAKING CHANGE:` footer
 bumps major.
 
+## Workflow
+
+Never commit or push directly to `main`. Create a branch and open a PR (`gh pr create`) so the
+maintainer can review before merging - even for changes that are already tested and CI-green.
+This is also what the repo's CI is built around: `pr-prerelease.yml` publishes a testable build
+per PR, and `commitlint.yml` checks the PR title against Conventional Commits (which matters
+since a squash-merge uses the PR title as the commit `release-please` sees on `main`).
+
 ## Before committing
 
 - `ruff check .` must pass.
