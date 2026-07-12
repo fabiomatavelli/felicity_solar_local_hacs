@@ -10,9 +10,12 @@ not a port of its code) and confirmed live against a Felicity Solar FLB48314TG1-
   so reading up to and including the first ``}`` yields the complete, valid JSON document.
 - After parsing, write a single ``.`` byte back to the device as an acknowledgement.
 - The device's embedded TCP server tolerates multiple query/response round-trips on the same
-  open connection (confirmed manually via telnet), so this client can optionally keep the
-  connection open across calls (``persistent=True``) instead of reconnecting every time,
-  transparently reconnecting if the cached connection turns out to be stale/dead.
+  open connection (confirmed manually via telnet), so this client can keep the connection
+  open across calls (``persistent=True``, the default) instead of reconnecting every time,
+  transparently reconnecting if the cached connection turns out to be stale/dead. When
+  persistent, OS-level TCP keepalive is also enabled on the socket so a half-dead connection
+  (e.g. the WiFi module rebooting without a clean FIN) is more likely to be caught by the OS
+  while idle, rather than only reactively on the next failed query.
 """
 
 from __future__ import annotations
@@ -21,6 +24,7 @@ import asyncio
 import contextlib
 import json
 import logging
+import socket
 from typing import Any
 
 from .const import (
@@ -29,6 +33,9 @@ from .const import (
     DEFAULT_TIMEOUT,
     QUERY_COMMAND,
     STRAY_BYTES_FLUSH_TIMEOUT,
+    TCP_KEEPALIVE_COUNT,
+    TCP_KEEPALIVE_IDLE,
+    TCP_KEEPALIVE_INTERVAL,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -129,6 +136,41 @@ class FelicityLocalClient:
             raise FelicityConnectionError(
                 f"Could not connect to {self.host}:{self.port}: {err}"
             ) from err
+
+        if self.persistent:
+            self._enable_keepalive()
+
+    def _enable_keepalive(self) -> None:
+        """Best-effort: ask the OS to probe the persistent connection while it's idle.
+
+        Without this, a peer that vanishes without a clean FIN (e.g. the battery's WiFi
+        module rebooting) can leave a cached connection looking alive between polls, only
+        discovered reactively on the next failed query. Tuning knobs (TCP_KEEPIDLE/
+        TCP_KEEPINTVL/TCP_KEEPCNT on Linux, TCP_KEEPALIVE as the idle-time equivalent on
+        macOS) aren't available on every platform, so each is applied independently via
+        hasattr guards - a platform that only supports bare SO_KEEPALIVE still gets that
+        much.
+        """
+        assert self._writer is not None
+        sock = self._writer.get_extra_info("socket")
+        if sock is None:
+            return
+        try:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+            if hasattr(socket, "TCP_KEEPIDLE"):  # Linux
+                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, TCP_KEEPALIVE_IDLE)
+            elif hasattr(socket, "TCP_KEEPALIVE"):  # macOS equivalent of TCP_KEEPIDLE
+                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPALIVE, TCP_KEEPALIVE_IDLE)
+            if hasattr(socket, "TCP_KEEPINTVL"):
+                sock.setsockopt(
+                    socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, TCP_KEEPALIVE_INTERVAL
+                )
+            if hasattr(socket, "TCP_KEEPCNT"):
+                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, TCP_KEEPALIVE_COUNT)
+        except OSError:
+            _LOGGER.debug(
+                "Could not tune TCP keepalive for %s:%s (non-fatal)", self.host, self.port
+            )
 
     async def _disconnect(self) -> None:
         writer, self._writer = self._writer, None

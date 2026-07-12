@@ -152,3 +152,22 @@ async def test_options_flow_allows_low_interval_when_persistent(
         CONF_UPDATE_INTERVAL: 5,
         CONF_PERSISTENT_CONNECTION: True,
     }
+
+
+async def test_options_flow_defaults_to_persistent_five_seconds(
+    hass: HomeAssistant,
+) -> None:
+    # Locks in the "new install picks up 5s/persistent automatically" behavior: a fresh
+    # entry (no options set yet) must show these as the form's defaults.
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="test-serial",
+        data={CONF_HOST: "192.168.1.50", CONF_PORT: 53970},
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+
+    defaults = {key.schema: key.default() for key in result["data_schema"].schema}
+    assert defaults[CONF_PERSISTENT_CONNECTION] is True
+    assert defaults[CONF_UPDATE_INTERVAL] == 5

@@ -244,3 +244,29 @@ async def test_async_close_disconnects_persistent_connection(
 
     await client.async_get_data()
     assert fake_server.connection_count == 2
+
+
+async def test_persistent_mode_enables_tcp_keepalive(
+    fake_server: _FakeServer, sample_response: dict[str, Any]
+) -> None:
+    port = await fake_server.start(json.dumps(sample_response).encode(), stay_open=True)
+    client = FelicityLocalClient("127.0.0.1", port, timeout=2.0, persistent=True)
+
+    await client.async_get_data()
+
+    assert client._writer is not None
+    sock = client._writer.get_extra_info("socket")
+    assert sock.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE) != 0
+
+
+async def test_one_shot_mode_does_not_enable_tcp_keepalive(fake_server: _FakeServer) -> None:
+    port = await fake_server.start(b"")  # never reached; connecting is enough
+    client = FelicityLocalClient("127.0.0.1", port, timeout=2.0, persistent=False)
+
+    await client._connect()
+    try:
+        assert client._writer is not None
+        sock = client._writer.get_extra_info("socket")
+        assert sock.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE) == 0
+    finally:
+        await client._disconnect()

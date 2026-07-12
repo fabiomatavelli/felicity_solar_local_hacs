@@ -57,12 +57,18 @@ This integration isn't in the default HACS store yet, so it needs to be added as
 4. Enter the battery's IP address (port defaults to `53970`).
 5. Repeat for each additional battery - one config entry per battery/IP.
 
-Update interval (default 30s, minimum 10s) can be changed afterwards from the integration's
-**Configure** button. That dialog also has a **Keep connection open** toggle: by default the
-integration reconnects to the battery on every poll, but the battery's TCP server tolerates
-multiple queries on the same open connection, so enabling this keeps it open between polls
-(with automatic reconnect if it ever drops) and lowers the minimum interval to 5s for
-near-real-time updates.
+Update interval (default 5s) and the **Keep connection open** toggle (on by default) can be
+changed afterwards from the integration's **Configure** button. The battery's TCP server
+tolerates multiple queries on the same open connection, so by default the integration keeps
+it open between polls instead of reconnecting every time - with automatic reconnect if it
+ever drops, and OS-level TCP keepalive so a dropped connection is noticed between polls
+rather than only on the next failed query. Disabling **Keep connection open** switches to
+reconnecting on every poll and raises the minimum interval to 10s.
+
+If you installed this integration before persistent connections became the default, your
+existing config entry will pick up the new 5s/persistent defaults automatically the next
+time it reloads (e.g. on a Home Assistant restart), unless you've already set the update
+interval/**Keep connection open** explicitly via **Configure**.
 
 ### Confirming your battery works before setting up the integration
 
@@ -104,8 +110,9 @@ is written in JavaScript; this integration is a fresh Python implementation base
 observed protocol facts, not a port of its code. In short: plain TCP on port `53970`, send
 `wifilocalMonitor:get dev real infor`, read the JSON reply up to its first `}`, then write a
 single `.` byte back as an acknowledgement. The device tolerates repeated queries on the same
-open connection, so with **Keep connection open** enabled the client reuses one connection
-across polls (transparently reconnecting if it goes stale) instead of reconnecting every time.
+open connection, so with **Keep connection open** enabled (the default) the client reuses one
+connection across polls, with OS-level TCP keepalive so a dropped connection is still noticed
+between polls, transparently reconnecting if it goes stale, instead of reconnecting every time.
 
 ## 👨‍💻 Author
 
