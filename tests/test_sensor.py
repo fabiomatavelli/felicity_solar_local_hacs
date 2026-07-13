@@ -20,6 +20,10 @@ from custom_components.felicity_solar_local.const import (
 pytestmark = pytest.mark.asyncio
 
 API_PATH = "custom_components.felicity_solar_local.coordinator.FelicityLocalClient.async_get_data"
+TZ_PATH = (
+    "custom_components.felicity_solar_local.coordinator.FelicityLocalClient"
+    ".async_get_timezone_offset_minutes"
+)
 
 
 async def test_setup_entry_creates_sensors_with_correct_state(
@@ -33,7 +37,10 @@ async def test_setup_entry_creates_sensors_with_correct_state(
     )
     entry.add_to_hass(hass)
 
-    with patch(API_PATH, AsyncMock(return_value=sample_response)):
+    with (
+        patch(API_PATH, AsyncMock(return_value=sample_response)),
+        patch(TZ_PATH, AsyncMock(return_value=60)),
+    ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
 
@@ -65,7 +72,10 @@ async def test_raw_data_sensor_absent_by_default(
     )
     entry.add_to_hass(hass)
 
-    with patch(API_PATH, AsyncMock(return_value=sample_response)):
+    with (
+        patch(API_PATH, AsyncMock(return_value=sample_response)),
+        patch(TZ_PATH, AsyncMock(return_value=60)),
+    ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
 
@@ -85,7 +95,10 @@ async def test_raw_data_sensor_present_when_enabled(
     )
     entry.add_to_hass(hass)
 
-    with patch(API_PATH, AsyncMock(return_value=sample_response)):
+    with (
+        patch(API_PATH, AsyncMock(return_value=sample_response)),
+        patch(TZ_PATH, AsyncMock(return_value=60)),
+    ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
 
@@ -110,7 +123,10 @@ async def test_setup_entry_creates_charging_state_sensor(
     )
     entry.add_to_hass(hass)
 
-    with patch(API_PATH, AsyncMock(return_value=sample_response)):
+    with (
+        patch(API_PATH, AsyncMock(return_value=sample_response)),
+        patch(TZ_PATH, AsyncMock(return_value=60)),
+    ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
 
@@ -135,7 +151,10 @@ async def test_unload_entry(hass: HomeAssistant, sample_response: dict[str, Any]
     )
     entry.add_to_hass(hass)
 
-    with patch(API_PATH, AsyncMock(return_value=sample_response)):
+    with (
+        patch(API_PATH, AsyncMock(return_value=sample_response)),
+        patch(TZ_PATH, AsyncMock(return_value=60)),
+    ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
 

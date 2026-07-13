@@ -65,6 +65,7 @@
       "charge_current_limit": { "name": "Charge current limit" },
       "discharge_current_limit": { "name": "Discharge current limit" },
       "serial_number": { "name": "Serial number" },
+      "device_timestamp": { "name": "Device timestamp" },
       "estate": { "name": "Equipment state code" },
       "state": { "name": "Battery state code" },
       "fault": { "name": "Battery fault code" },

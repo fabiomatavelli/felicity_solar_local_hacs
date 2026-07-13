@@ -28,12 +28,22 @@ from custom_components.felicity_solar_local.const import (
 pytestmark = pytest.mark.asyncio
 
 API_PATH = "custom_components.felicity_solar_local.config_flow.FelicityLocalClient.async_get_data"
+TZ_PATH = (
+    "custom_components.felicity_solar_local.config_flow.FelicityLocalClient"
+    ".async_get_timezone_offset_minutes"
+)
 
 
 async def test_user_flow_success(
     hass: HomeAssistant, sample_response: dict[str, Any]
 ) -> None:
-    with patch(API_PATH, AsyncMock(return_value=sample_response)):
+    # CREATE_ENTRY triggers a real async_setup_entry, which spins up a coordinator that
+    # polls immediately - FelicityLocalClient is the same class regardless of which
+    # module imported it, so this also covers the coordinator's client.
+    with (
+        patch(API_PATH, AsyncMock(return_value=sample_response)),
+        patch(TZ_PATH, AsyncMock(return_value=None)),
+    ):
         result = await hass.config_entries.flow.async_init(
             DOMAIN, context={"source": config_entries.SOURCE_USER}
         )

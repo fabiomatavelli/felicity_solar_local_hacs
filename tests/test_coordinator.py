@@ -18,6 +18,10 @@ from custom_components.felicity_solar_local.profiles import FLB48314TG1H_PROFILE
 pytestmark = pytest.mark.asyncio
 
 API_PATH = "custom_components.felicity_solar_local.coordinator.FelicityLocalClient.async_get_data"
+TZ_PATH = (
+    "custom_components.felicity_solar_local.coordinator.FelicityLocalClient"
+    ".async_get_timezone_offset_minutes"
+)
 
 
 def _make_coordinator(
@@ -44,12 +48,55 @@ async def test_update_data_selects_profile_and_parses(
 ) -> None:
     coordinator = _make_coordinator(hass)
 
-    with patch(API_PATH, AsyncMock(return_value=sample_response)):
+    with (
+        patch(API_PATH, AsyncMock(return_value=sample_response)),
+        patch(TZ_PATH, AsyncMock(return_value=None)),
+    ):
         result = await coordinator._async_update_data()
 
     assert result.raw == sample_response
     assert result.profile is FLB48314TG1H_PROFILE
     assert result.data["voltage"] == 54.04
+
+
+async def test_update_data_fetches_timezone_offset_once_and_merges_it(
+    hass: HomeAssistant, sample_response: dict[str, Any]
+) -> None:
+    coordinator = _make_coordinator(hass)
+    tz_mock = AsyncMock(return_value=60)
+
+    with (
+        patch(API_PATH, AsyncMock(return_value=sample_response)),
+        patch(TZ_PATH, tz_mock),
+    ):
+        first = await coordinator._async_update_data()
+        second = await coordinator._async_update_data()
+
+    assert first.raw["timeZMin"] == 60
+    assert second.raw["timeZMin"] == 60
+    # sample_response.json's "date" is "20260712121556" - at a merged +60min offset.
+    assert first.data["device_timestamp"].utcoffset().total_seconds() == 60 * 60
+    # The offset rarely changes (DST only), so it's fetched once per coordinator
+    # lifetime, not on every poll.
+    assert tz_mock.call_count == 1
+
+
+async def test_update_data_does_not_retry_timezone_offset_after_a_failed_fetch(
+    hass: HomeAssistant, sample_response: dict[str, Any]
+) -> None:
+    coordinator = _make_coordinator(hass)
+    tz_mock = AsyncMock(return_value=None)
+
+    with (
+        patch(API_PATH, AsyncMock(return_value=sample_response)),
+        patch(TZ_PATH, tz_mock),
+    ):
+        first = await coordinator._async_update_data()
+        second = await coordinator._async_update_data()
+
+    assert "timeZMin" not in first.raw
+    assert "timeZMin" not in second.raw
+    assert tz_mock.call_count == 1
 
 
 async def test_update_data_raises_update_failed_on_client_error(

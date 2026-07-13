@@ -53,6 +53,8 @@ class FelicityLocalCoordinator(DataUpdateCoordinator[FelicityBatteryData]):
         self.client = FelicityLocalClient(
             host, port, timeout=DEFAULT_TIMEOUT, persistent=persistent_connection
         )
+        self._tz_offset_minutes: int | None = None
+        self._tz_offset_fetched = False
 
     async def _async_update_data(self) -> FelicityBatteryData:
         try:
@@ -61,6 +63,16 @@ class FelicityLocalCoordinator(DataUpdateCoordinator[FelicityBatteryData]):
             raise UpdateFailed(
                 f"Error communicating with battery at {self.host}:{self.port}: {err}"
             ) from err
+
+        # The device's own UTC offset rarely changes (only across DST transitions), so
+        # this is fetched once per coordinator lifetime rather than every poll - it's a
+        # separate command from the main query above, but reuses the same connection in
+        # persistent mode (see api.py) rather than opening a second one.
+        if not self._tz_offset_fetched:
+            self._tz_offset_minutes = await self.client.async_get_timezone_offset_minutes()
+            self._tz_offset_fetched = True
+        if self._tz_offset_minutes is not None:
+            raw = {**raw, "timeZMin": self._tz_offset_minutes}
 
         profile = select_profile(raw)
         return FelicityBatteryData(raw=raw, profile=profile, data=profile.parse(raw))

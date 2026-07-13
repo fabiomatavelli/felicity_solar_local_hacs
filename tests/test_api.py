@@ -40,6 +40,7 @@ class _FakeServer:
         self._hold_open = False
         self._stay_open = False
         self._stray_bytes: bytes = b""
+        self._command_responses: dict[bytes, bytes] = {}
 
     async def start(
         self,
@@ -47,11 +48,13 @@ class _FakeServer:
         hold_open: bool = False,
         stay_open: bool = False,
         stray_bytes: bytes = b"",
+        command_responses: dict[bytes, bytes] | None = None,
     ) -> int:
         self._response = response
         self._hold_open = hold_open
         self._stay_open = stay_open
         self._stray_bytes = stray_bytes
+        self._command_responses = command_responses or {}
         self._server = await asyncio.start_server(self._handle, "127.0.0.1", 0)
         self.port = self._server.sockets[0].getsockname()[1]
         return self.port
@@ -72,7 +75,7 @@ class _FakeServer:
             if not command:
                 break
             self.received_command = command
-            writer.write(self._response)
+            writer.write(self._command_responses.get(command, self._response))
             await writer.drain()
             self.received_ack = await reader.read(1)
             self.handled.set()
@@ -270,3 +273,70 @@ async def test_one_shot_mode_does_not_enable_tcp_keepalive(fake_server: _FakeSer
         assert sock.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE) == 0
     finally:
         await client._disconnect()
+
+
+async def test_async_get_timezone_offset_minutes_parses_response(
+    fake_server: _FakeServer,
+) -> None:
+    port = await fake_server.start(
+        b"",
+        command_responses={
+            b"wifilocalMonitor:get Date": b'{"CommVer":1,"timeZMin":60,"rssi":-79}'
+        },
+    )
+    client = FelicityLocalClient("127.0.0.1", port, timeout=2.0)
+
+    offset = await client.async_get_timezone_offset_minutes()
+
+    assert offset == 60
+    assert fake_server.received_command == b"wifilocalMonitor:get Date"
+
+
+async def test_async_get_timezone_offset_minutes_returns_none_on_failure(
+    fake_server: _FakeServer,
+) -> None:
+    port = await fake_server.start(
+        b"",
+        command_responses={b"wifilocalMonitor:get Date": b'{"no timeZMin here"}'},
+    )
+    client = FelicityLocalClient("127.0.0.1", port, timeout=2.0)
+
+    assert await client.async_get_timezone_offset_minutes() is None
+
+
+async def test_async_get_timezone_offset_minutes_reuses_open_persistent_connection(
+    fake_server: _FakeServer, sample_response: dict[str, Any]
+) -> None:
+    # The device's embedded TCP stack may only support one connection at a time, so the
+    # timezone query must never open a second, concurrent connection - it should reuse
+    # whatever connection async_get_data already has open in persistent mode.
+    port = await fake_server.start(
+        json.dumps(sample_response).encode(),
+        stay_open=True,
+        command_responses={
+            b"wifilocalMonitor:get Date": b'{"CommVer":1,"timeZMin":60,"rssi":-79}'
+        },
+    )
+    client = FelicityLocalClient("127.0.0.1", port, timeout=2.0, persistent=True)
+
+    await client.async_get_data()
+    offset = await client.async_get_timezone_offset_minutes()
+
+    assert offset == 60
+    assert fake_server.connection_count == 1
+
+
+async def test_async_get_timezone_offset_minutes_does_not_leave_one_shot_connection_open(
+    fake_server: _FakeServer,
+) -> None:
+    port = await fake_server.start(
+        b"",
+        command_responses={
+            b"wifilocalMonitor:get Date": b'{"CommVer":1,"timeZMin":60,"rssi":-79}'
+        },
+    )
+    client = FelicityLocalClient("127.0.0.1", port, timeout=2.0)  # persistent=False
+
+    await client.async_get_timezone_offset_minutes()
+
+    assert client._writer is None

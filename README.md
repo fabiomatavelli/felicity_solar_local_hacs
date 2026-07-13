@@ -121,6 +121,14 @@ open connection, so with **Keep connection open** enabled (the default) the clie
 connection across polls, with OS-level TCP keepalive so a dropped connection is still noticed
 between polls, transparently reconnecting if it goes stale, instead of reconnecting every time.
 
+There's a second command, `wifilocalMonitor:get Date`, which returns the device's UTC offset
+(`timeZMin`, in minutes - both test batteries reported `60`, i.e. UTC+1) alongside its own
+copy of the current time. The main query's own `date` field carries no timezone, so this
+command is queried once per coordinator lifetime (not every poll, since the offset only
+changes across DST transitions) to correctly timezone-localize the **Device timestamp**
+sensor. It's sent over the same connection as the main query when persistent, never a second
+concurrent one - the device's embedded TCP stack may only tolerate one client at a time.
+
 ## 👨‍💻 Author
 
 Created and maintained by **Fábio Matavelli** ([@fabiomatavelli](https://github.com/fabiomatavelli)).
