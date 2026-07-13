@@ -6,10 +6,15 @@ CONF_HOST = "host"
 CONF_PORT = "port"
 CONF_UPDATE_INTERVAL = "update_interval"
 CONF_PERSISTENT_CONNECTION = "persistent_connection"
+CONF_ENABLE_RAW_DATA_SENSOR = "enable_raw_data_sensor"
 
 DEFAULT_PORT = 53970
 DEFAULT_UPDATE_INTERVAL = 5
 DEFAULT_PERSISTENT_CONNECTION = True
+# Off by default: the raw-data sensor's extra_state_attributes embeds the entire device
+# payload on every update, which at the fast default poll interval adds meaningful
+# recorder/frontend overhead most users don't need day-to-day.
+DEFAULT_ENABLE_RAW_DATA_SENSOR = False
 
 # Floor when reconnecting every poll (persistent connection disabled) - keeps connection
 # churn against the battery's embedded TCP stack reasonable.
