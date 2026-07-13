@@ -15,10 +15,10 @@ onboard WiFi module using its local TCP/JSON protocol.
 - **Local polling, no cloud**: connects straight to the battery's IP over TCP.
 - **UI configuration**: add a battery by IP, no YAML required.
 - **All battery data**: voltage, current, power, SOC, SOH, capacity, all 16 individual cell
-  voltages, min/max cell voltage, temperatures, charge/discharge limits, fault/warning codes,
-  and the battery's own reported timestamp (correctly timezone-aware - see Protocol below).
-- **Nothing hidden**: a diagnostic "Raw data" sensor exposes the complete device payload as
-  attributes, even fields not mapped to a dedicated sensor.
+  voltages, min/max cell voltage, temperatures, charge/discharge limits, fault/warning codes.
+- **Nothing hidden**: an optional diagnostic "Raw data" sensor exposes the complete device
+  payload as attributes, even fields not mapped to a dedicated sensor (off by default - see
+  Configuration below).
 - **Multi-model aware**: sensor field mapping is looked up per battery model (see
   [Battery model support](#-battery-model-support) below) instead of hardcoded to one model.
 
@@ -71,6 +71,12 @@ existing config entry will pick up the new 5s/persistent defaults automatically 
 time it reloads (e.g. on a Home Assistant restart), unless you've already set the update
 interval/**Keep connection open** explicitly via **Configure**.
 
+The same **Configure** dialog also has an **Enable raw data sensor** toggle (off by default).
+Its `extra_state_attributes` embed the entire raw device payload, and re-writing that on every
+poll adds meaningful recorder/frontend overhead at the fast default interval - turn it on for
+troubleshooting or when capturing data to contribute a new battery model profile, and back off
+otherwise.
+
 ### Confirming your battery works before setting up the integration
 
 Run the standalone probe script against your battery's IP to confirm it speaks the protocol
@@ -95,8 +101,8 @@ for the full mapping.
 Other Felicity WiFi-battery models likely speak the same protocol (same command, port, and
 JSON shape were originally reverse-engineered against a different model, the FLA48300), but
 scaling/field meaning for models other than the FLB48314TG1-H is **not verified**. Unrecognized
-models fall back to a best-effort generic profile with the same field names, and the raw data
-sensor always shows the untouched payload regardless.
+models fall back to a best-effort generic profile with the same field names; enable the raw
+data sensor (see Configuration above) to see the untouched payload regardless of profile.
 
 **Have a different Felicity Solar WiFi battery?** Run `scripts/probe.py` against it, compare
 the output to `tests/fixtures/sample_response.json`, and open a PR adding a new

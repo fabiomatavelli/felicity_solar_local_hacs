@@ -25,10 +25,12 @@
       "init": {
         "data": {
           "persistent_connection": "Keep connection open",
-          "update_interval": "Update interval (seconds)"
+          "update_interval": "Update interval (seconds)",
+          "enable_raw_data_sensor": "Enable raw data sensor"
         },
         "data_description": {
-          "persistent_connection": "Keep the TCP connection to the battery open between updates instead of reconnecting every time (this is the default). Allows much faster polling (down to 5s) at the cost of holding a socket open on the battery's WiFi module; the OS is asked to probe the connection while idle so a dropped connection is still detected between polls."
+          "persistent_connection": "Keep the TCP connection to the battery open between updates instead of reconnecting every time (this is the default). Allows much faster polling (down to 5s) at the cost of holding a socket open on the battery's WiFi module; the OS is asked to probe the connection while idle so a dropped connection is still detected between polls.",
+          "enable_raw_data_sensor": "Adds a diagnostic sensor exposing the full raw device payload as attributes. Off by default - at fast poll intervals, updating this sensor's large attribute set on every poll adds meaningful overhead. Turn it on for troubleshooting or when contributing a new battery model profile."
         }
       }
     },
