@@ -31,4 +31,9 @@ TCP_KEEPALIVE_INTERVAL = 5  # seconds between probes
 TCP_KEEPALIVE_COUNT = 3  # probes before the OS considers the connection dead
 
 QUERY_COMMAND = b"wifilocalMonitor:get dev real infor"
+# Separate command returning {"dateTime": "<YYYYMMDDHHMMSS>", "timeZMin": <utc offset in
+# minutes>, ...} - the main query's own "date" field carries no timezone, so this is
+# queried once (not every poll) to learn the device's UTC offset. Confirmed live: both
+# batteries returned timeZMin=60 (UTC+1).
+DATE_QUERY_COMMAND = b"wifilocalMonitor:get Date"
 ACK_BYTE = b"."

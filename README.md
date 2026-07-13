@@ -15,7 +15,8 @@ onboard WiFi module using its local TCP/JSON protocol.
 - **Local polling, no cloud**: connects straight to the battery's IP over TCP.
 - **UI configuration**: add a battery by IP, no YAML required.
 - **All battery data**: voltage, current, power, SOC, SOH, capacity, all 16 individual cell
-  voltages, min/max cell voltage, temperatures, charge/discharge limits, fault/warning codes.
+  voltages, min/max cell voltage, temperatures, charge/discharge limits, fault/warning codes,
+  and the battery's own reported timestamp (correctly timezone-aware - see Protocol below).
 - **Nothing hidden**: a diagnostic "Raw data" sensor exposes the complete device payload as
   attributes, even fields not mapped to a dedicated sensor.
 - **Multi-model aware**: sensor field mapping is looked up per battery model (see
@@ -113,6 +114,14 @@ single `.` byte back as an acknowledgement. The device tolerates repeated querie
 open connection, so with **Keep connection open** enabled (the default) the client reuses one
 connection across polls, with OS-level TCP keepalive so a dropped connection is still noticed
 between polls, transparently reconnecting if it goes stale, instead of reconnecting every time.
+
+There's a second command, `wifilocalMonitor:get Date`, which returns the device's UTC offset
+(`timeZMin`, in minutes - both test batteries reported `60`, i.e. UTC+1) alongside its own
+copy of the current time. The main query's own `date` field carries no timezone, so this
+command is queried once per coordinator lifetime (not every poll, since the offset only
+changes across DST transitions) to correctly timezone-localize the **Device timestamp**
+sensor. It's sent over the same connection as the main query when persistent, never a second
+concurrent one - the device's embedded TCP stack may only tolerate one client at a time.
 
 ## 👨‍💻 Author
 

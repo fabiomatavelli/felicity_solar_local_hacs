@@ -16,6 +16,10 @@ not a port of its code) and confirmed live against a Felicity Solar FLB48314TG1-
   persistent, OS-level TCP keepalive is also enabled on the socket so a half-dead connection
   (e.g. the WiFi module rebooting without a clean FIN) is more likely to be caught by the OS
   while idle, rather than only reactively on the next failed query.
+- The embedded TCP stack's tolerance for *concurrent* connections is unknown and may well be
+  just one, so every query (the main data query, the separate timezone query) goes through
+  the same connect-or-reuse path and is serialized by one lock - never two connections open
+  at once.
 """
 
 from __future__ import annotations
@@ -29,6 +33,7 @@ from typing import Any
 
 from .const import (
     ACK_BYTE,
+    DATE_QUERY_COMMAND,
     DEFAULT_PORT,
     DEFAULT_TIMEOUT,
     QUERY_COMMAND,
@@ -99,11 +104,8 @@ class FelicityLocalClient:
             last_err: FelicityLocalError | None = None
             for _ in range(attempts):
                 try:
-                    if self._writer is None or self._writer.is_closing():
-                        await self._connect()
-                    elif self.persistent:
-                        await self._flush_stray_bytes()
-                    data = await self._query()
+                    await self._ensure_connected()
+                    data = await self._query(QUERY_COMMAND)
                     self._validate(data)
                 except FelicityLocalError as err:
                     last_err = err
@@ -121,6 +123,37 @@ class FelicityLocalClient:
         """Close the connection, if any. Safe to call whether or not one is open."""
         async with self._lock:
             await self._disconnect()
+
+    async def async_get_timezone_offset_minutes(self) -> int | None:
+        """Query the device's self-reported UTC offset (``wifilocalMonitor:get Date``).
+
+        Shares the same connect/reuse logic as async_get_data - including reusing an
+        already-open persistent connection - rather than opening a second, concurrent
+        connection: the device's embedded TCP stack may only support one client at a
+        time, so a second connection risks failing outright or evicting the primary
+        polling connection. Best-effort: any failure returns None (treat as "unknown")
+        rather than raising, since this is supplementary info, not the main poll data.
+        """
+        async with self._lock:
+            try:
+                await self._ensure_connected()
+                data = await self._query(DATE_QUERY_COMMAND)
+            except FelicityLocalError:
+                await self._disconnect()
+                return None
+
+            if not self.persistent:
+                await self._disconnect()
+
+        offset = data.get("timeZMin") if isinstance(data, dict) else None
+        return offset if isinstance(offset, int) else None
+
+    async def _ensure_connected(self) -> None:
+        """Reuse the cached connection if it's still usable, else open a fresh one."""
+        if self._writer is None or self._writer.is_closing():
+            await self._connect()
+        elif self.persistent:
+            await self._flush_stray_bytes()
 
     async def _connect(self) -> None:
         try:
@@ -205,13 +238,13 @@ class FelicityLocalClient:
                 self.port,
             )
 
-    async def _query(self) -> dict[str, Any]:
+    async def _query(self, command: bytes) -> dict[str, Any]:
         writer = self._writer
         reader = self._reader
         assert writer is not None
         assert reader is not None
 
-        writer.write(QUERY_COMMAND)
+        writer.write(command)
         try:
             await asyncio.wait_for(writer.drain(), timeout=self.timeout)
         except OSError as err:
