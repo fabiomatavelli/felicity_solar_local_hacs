@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0](https://github.com/fabiomatavelli/ha-felicity-solar-local/compare/v0.2.1...v0.3.0) (2026-07-13)
+
+
+### Features
+
+* **sensor:** add device timestamp sensor with correct timezone ([#10](https://github.com/fabiomatavelli/ha-felicity-solar-local/issues/10)) ([5424fd7](https://github.com/fabiomatavelli/ha-felicity-solar-local/commit/5424fd7cda5ba053b6432bff91f77ca0ee6e91dc))
+* **sensor:** make the raw data sensor opt-in, off by default ([#8](https://github.com/fabiomatavelli/ha-felicity-solar-local/issues/8)) ([500d5d0](https://github.com/fabiomatavelli/ha-felicity-solar-local/commit/500d5d00129fae6a741af0cf0b4425b44f909701))
+
 ## [0.2.1](https://github.com/fabiomatavelli/ha-felicity-solar-local/compare/v0.2.0...v0.2.1) (2026-07-12)
 
 
