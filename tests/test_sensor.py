@@ -72,7 +72,10 @@ async def test_raw_data_sensor_absent_by_default(
     )
     entry.add_to_hass(hass)
 
-    with patch(API_PATH, AsyncMock(return_value=sample_response)):
+    with (
+        patch(API_PATH, AsyncMock(return_value=sample_response)),
+        patch(TZ_PATH, AsyncMock(return_value=60)),
+    ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
 
@@ -92,7 +95,10 @@ async def test_raw_data_sensor_present_when_enabled(
     )
     entry.add_to_hass(hass)
 
-    with patch(API_PATH, AsyncMock(return_value=sample_response)):
+    with (
+        patch(API_PATH, AsyncMock(return_value=sample_response)),
+        patch(TZ_PATH, AsyncMock(return_value=60)),
+    ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
 
