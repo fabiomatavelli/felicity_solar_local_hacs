@@ -10,6 +10,11 @@ source .venv/bin/activate
 pip install -r requirements-test.txt
 ```
 
+`requirements-test.txt` is pinned to exact versions (not ranges) so everyone - local dev and
+CI - runs the identical toolchain; a version drift between them is exactly what caused a
+Linux-only CI failure that didn't reproduce locally once. Dependabot opens a PR to bump these
+weekly; review and merge it like any other PR (it goes through the same required checks).
+
 ## Running checks
 
 ```console
@@ -51,12 +56,15 @@ uses the PR title as the commit message on `main`, so a correctly formatted titl
 
 ## Release process
 
-- Every PR gets its own pre-release build automatically (`.github/workflows/pr-prerelease.yml`)
-  - a GitHub Release tagged `pr-<number>` with a zip of the integration, so you can install and
-    test your change with HACS before it merges.
-- Once merged to `main`, `release-please` (`.github/workflows/release-please.yml`) maintains a
-  standing "Release PR" that aggregates unreleased Conventional Commits. Merging that PR bumps
-  `manifest.json`'s version, tags the release, and publishes it - no manual version bumping.
+- Every push to `main` republishes a single rolling **`edge`** prerelease
+  (`.github/workflows/edge-prerelease.yml`) - the `edge` tag is force-moved to the latest
+  commit and its GitHub Release updated with a fresh zip, so there's always exactly one
+  "latest main" build to install and test via HACS, rather than an ever-growing pile of
+  per-PR tags that outlive their PRs.
+- `release-please` (`.github/workflows/release-please.yml`) maintains a standing "Release PR"
+  on `main` that aggregates unreleased Conventional Commits. Merging that PR bumps
+  `manifest.json`'s version, tags the real release, and publishes it - no manual version
+  bumping.
 
 ## Pull requests
 

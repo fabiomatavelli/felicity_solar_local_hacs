@@ -20,6 +20,20 @@ from custom_components.felicity_solar_local.api import (
 pytestmark = [pytest.mark.asyncio, pytest.mark.enable_socket]
 
 
+@pytest.fixture(autouse=True)
+def _ensure_socket_enabled(socket_enabled: None) -> None:
+    """Belt-and-suspenders alongside the `enable_socket` marker above.
+
+    On some CI environments (observed: Python 3.14 on Linux, not reproduced locally on
+    macOS with byte-for-byte identical package versions) the marker alone wasn't
+    sufficient to unblock sockets before the test body ran - the very first
+    asyncio.start_server() call in _FakeServer.start() was still hitting
+    pytest-socket's guard. Explicitly depending on the socket_enabled fixture goes
+    through pytest's core fixture resolution instead of marker lookup, which has
+    proven more reliable.
+    """
+
+
 class _FakeServer:
     """A minimal TCP server that replays a canned response.
 
