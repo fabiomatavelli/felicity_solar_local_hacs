@@ -18,7 +18,13 @@ jobs:
       - run: ruff check .
 
   pytest:
-    name: Pytest (Python ${{ matrix.python-version }})
+    # Deliberately not "Pytest (Python ${{ matrix.python-version }})" - GitHub's required
+    # status checks only match exact context names, no wildcards, so a version-specific
+    # name means every future Python bump also requires a branch-protection update or
+    # merging silently stops working. A single fixed name plus a single matrix entry
+    # keeps that check permanently valid; if a second Python version is ever added here,
+    # switch to a matching required-check-per-job scheme instead.
+    name: Pytest
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
