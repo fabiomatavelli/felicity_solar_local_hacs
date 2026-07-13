@@ -13,7 +13,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import FelicityLocalConfigEntry
-from .const import DOMAIN
+from .const import CONF_ENABLE_RAW_DATA_SENSOR, DEFAULT_ENABLE_RAW_DATA_SENSOR, DOMAIN
 from .coordinator import FelicityLocalCoordinator
 
 RAW_DATA_DESCRIPTION = SensorEntityDescription(
@@ -35,7 +35,9 @@ async def async_setup_entry(
         FelicitySensor(coordinator, description)
         for description in coordinator.data.profile.sensors
     ]
-    entities.append(FelicityRawDataSensor(coordinator))
+
+    if entry.options.get(CONF_ENABLE_RAW_DATA_SENSOR, DEFAULT_ENABLE_RAW_DATA_SENSOR):
+        entities.append(FelicityRawDataSensor(coordinator))
 
     async_add_entities(entities)
 

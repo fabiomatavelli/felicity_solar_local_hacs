@@ -17,10 +17,12 @@ from .api import (
     FelicityTimeoutError,
 )
 from .const import (
+    CONF_ENABLE_RAW_DATA_SENSOR,
     CONF_HOST,
     CONF_PERSISTENT_CONNECTION,
     CONF_PORT,
     CONF_UPDATE_INTERVAL,
+    DEFAULT_ENABLE_RAW_DATA_SENSOR,
     DEFAULT_PERSISTENT_CONNECTION,
     DEFAULT_PORT,
     DEFAULT_UPDATE_INTERVAL,
@@ -113,6 +115,9 @@ class FelicityLocalOptionsFlow(config_entries.OptionsFlow):
         current_persistent = self.config_entry.options.get(
             CONF_PERSISTENT_CONNECTION, DEFAULT_PERSISTENT_CONNECTION
         )
+        current_raw_data = self.config_entry.options.get(
+            CONF_ENABLE_RAW_DATA_SENSOR, DEFAULT_ENABLE_RAW_DATA_SENSOR
+        )
 
         if user_input is not None:
             interval = int(user_input[CONF_UPDATE_INTERVAL])
@@ -125,6 +130,7 @@ class FelicityLocalOptionsFlow(config_entries.OptionsFlow):
 
             current_interval = interval
             current_persistent = persistent
+            current_raw_data = bool(user_input[CONF_ENABLE_RAW_DATA_SENSOR])
 
         schema = vol.Schema(
             {
@@ -141,6 +147,9 @@ class FelicityLocalOptionsFlow(config_entries.OptionsFlow):
                         mode=selector.NumberSelectorMode.BOX,
                     )
                 ),
+                vol.Required(
+                    CONF_ENABLE_RAW_DATA_SENSOR, default=current_raw_data
+                ): selector.BooleanSelector(),
             }
         )
         return self.async_show_form(step_id="init", data_schema=schema, errors=errors)
