@@ -10,6 +10,11 @@ source .venv/bin/activate
 pip install -r requirements-test.txt
 ```
 
+`requirements-test.txt` is pinned to exact versions (not ranges) so everyone - local dev and
+CI - runs the identical toolchain; a version drift between them is exactly what caused a
+Linux-only CI failure that didn't reproduce locally once. Dependabot opens a PR to bump these
+weekly; review and merge it like any other PR (it goes through the same required checks).
+
 ## Running checks
 
 ```console
