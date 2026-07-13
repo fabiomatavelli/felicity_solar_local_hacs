@@ -120,6 +120,13 @@ def parse_common(raw: dict[str, Any]) -> dict[str, Any]:
     voltage = _scaled(raw, "BattList", 0, 0, 1000)
     current = _scaled(raw, "BattList", 1, 0, 10)
     bstate = _raw(raw, "Bstate")
+    temperature_1 = _scaled(raw, "BTemp", 0, 0, 10)
+    temperature_2 = _scaled(raw, "BTemp", 0, 1, 10)
+    temperature_3 = _scaled(raw, "BTemp", 1, 0, 10)
+    temperature_4 = _scaled(raw, "BTemp", 1, 1, 10)
+    temperatures = [
+        t for t in (temperature_1, temperature_2, temperature_3, temperature_4) if t is not None
+    ]
 
     data: dict[str, Any] = {
         "voltage": voltage,
@@ -133,10 +140,12 @@ def parse_common(raw: dict[str, Any]) -> dict[str, Any]:
         "min_cell_voltage": _scaled(raw, "BMaxMin", 0, 1, 1000),
         "max_cell_number": _path(raw, "BMaxMin", 1, 0),
         "min_cell_number": _path(raw, "BMaxMin", 1, 1),
-        "temperature_1": _scaled(raw, "BTemp", 0, 0, 10),
-        "temperature_2": _scaled(raw, "BTemp", 0, 1, 10),
-        "temperature_3": _scaled(raw, "BTemp", 1, 0, 10),
-        "temperature_4": _scaled(raw, "BTemp", 1, 1, 10),
+        "temperature_1": temperature_1,
+        "temperature_2": temperature_2,
+        "temperature_3": temperature_3,
+        "temperature_4": temperature_4,
+        "temperature_max": max(temperatures) if temperatures else None,
+        "temperature_min": min(temperatures) if temperatures else None,
         "charge_voltage_limit": _scaled(raw, "BLVolCu", 0, 0, 10),
         "discharge_voltage_limit": _scaled(raw, "BLVolCu", 0, 1, 10),
         "charge_current_limit": _scaled(raw, "BLVolCu", 1, 0, 10),
@@ -249,6 +258,22 @@ _COMMON_SENSORS: tuple[SensorEntityDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
     ),
+    SensorEntityDescription(
+        key="temperature_max",
+        translation_key="temperature_max",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    SensorEntityDescription(
+        key="temperature_min",
+        translation_key="temperature_min",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
     *(
         SensorEntityDescription(
             key=f"temperature_{i + 1}",
@@ -257,6 +282,8 @@ _COMMON_SENSORS: tuple[SensorEntityDescription, ...] = (
             device_class=SensorDeviceClass.TEMPERATURE,
             native_unit_of_measurement=UnitOfTemperature.CELSIUS,
             state_class=SensorStateClass.MEASUREMENT,
+            entity_category=EntityCategory.DIAGNOSTIC,
+            entity_registry_enabled_default=False,
         )
         for i in range(4)
     ),

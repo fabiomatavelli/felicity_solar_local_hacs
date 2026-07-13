@@ -43,6 +43,8 @@ def test_parse_scales_verified_fields_correctly(sample_response: dict[str, Any])
     assert data["temperature_2"] == 26.0
     assert data["temperature_3"] == 25.6
     assert data["temperature_4"] == 25.6
+    assert data["temperature_max"] == 26.0
+    assert data["temperature_min"] == 25.6
     assert data["charge_voltage_limit"] == 57.6
     assert data["discharge_voltage_limit"] == 48.0
     assert data["charge_current_limit"] == 32.0
@@ -74,6 +76,22 @@ def test_parse_treats_sentinels_as_missing(sample_response: dict[str, Any]) -> N
     modified = {**sample_response, "BattList": [[54040, 65535], [-1, -1]]}
     data = FLB48314TG1H_PROFILE.parse(modified)
     assert data["current"] is None
+
+
+def test_parse_temperature_max_min_are_none_when_all_probes_sentinel(
+    sample_response: dict[str, Any],
+) -> None:
+    modified = {**sample_response, "BTemp": [[65535, 65535], [65535, 65535]]}
+    data = FLB48314TG1H_PROFILE.parse(modified)
+    assert data["temperature_max"] is None
+    assert data["temperature_min"] is None
+
+
+def test_parse_temperature_max_min_skip_missing_probes(sample_response: dict[str, Any]) -> None:
+    modified = {**sample_response, "BTemp": [[260, 65535], [256, 256]]}
+    data = FLB48314TG1H_PROFILE.parse(modified)
+    assert data["temperature_max"] == 26.0
+    assert data["temperature_min"] == 25.6
 
 
 def test_default_profile_uses_same_shape(sample_response: dict[str, Any]) -> None:

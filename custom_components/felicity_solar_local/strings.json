@@ -58,6 +58,8 @@
       "min_cell_voltage": { "name": "Min cell voltage" },
       "max_cell_number": { "name": "Max voltage cell number" },
       "min_cell_number": { "name": "Min voltage cell number" },
+      "temperature_max": { "name": "Max temperature" },
+      "temperature_min": { "name": "Min temperature" },
       "temperature": { "name": "Temperature {index}" },
       "cell_voltage": { "name": "Cell {index} voltage" },
       "charge_voltage_limit": { "name": "Charge voltage limit" },
