@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
+import homeassistant.util.dt as dt_util
 import pytest
 
 from custom_components.felicity_solar_local.profiles import (
@@ -109,3 +111,23 @@ def test_parse_charging_state_is_none_when_bstate_is_sentinel(
     data = FLB48314TG1H_PROFILE.parse(modified)
     assert data["state"] is None
     assert data["charging_state"] is None
+
+
+def test_parse_decodes_device_timestamp(sample_response: dict[str, Any]) -> None:
+    # sample_response.json's "date" is "20260712121556".
+    data = FLB48314TG1H_PROFILE.parse(sample_response)
+    assert data["device_timestamp"] == datetime(
+        2026, 7, 12, 12, 15, 56, tzinfo=dt_util.DEFAULT_TIME_ZONE
+    )
+
+
+@pytest.mark.parametrize(
+    "date_value",
+    [None, "", "not-a-date", "2026071212155", 20260712121556],
+)
+def test_parse_device_timestamp_is_none_for_missing_or_malformed_date(
+    sample_response: dict[str, Any], date_value: Any
+) -> None:
+    modified = {**sample_response, "date": date_value}
+    data = FLB48314TG1H_PROFILE.parse(modified)
+    assert data["device_timestamp"] is None

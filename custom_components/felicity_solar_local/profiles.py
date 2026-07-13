@@ -15,8 +15,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
+import homeassistant.util.dt as dt_util
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntityDescription,
@@ -79,6 +81,33 @@ def _charging_state(bstate: Any) -> str | None:
     return "standby"
 
 
+def _device_timestamp(raw: dict[str, Any]) -> datetime | None:
+    """Parse the device's self-reported ``date`` field (``YYYYMMDDHHMMSS``, e.g.
+
+    ``"20260712121556"``). The main query carries no timezone for this field, so the
+    coordinator separately queries ``wifilocalMonitor:get Date`` once (not every poll)
+    for the device's actual UTC offset (its ``timeZMin`` field) and merges it into
+    ``raw`` as ``timeZMin`` before calling parse() - see coordinator.py. Falls back to
+    Home Assistant's configured timezone if that offset isn't available (e.g. the
+    separate query hasn't succeeded yet).
+    """
+    date_value = raw.get("date")
+    if not isinstance(date_value, str) or len(date_value) != 14 or not date_value.isdigit():
+        return None
+    try:
+        naive = datetime.strptime(date_value, "%Y%m%d%H%M%S")
+    except ValueError:
+        return None
+
+    offset_minutes = raw.get("timeZMin")
+    tzinfo = (
+        timezone(timedelta(minutes=offset_minutes))
+        if isinstance(offset_minutes, int)
+        else dt_util.DEFAULT_TIME_ZONE
+    )
+    return naive.replace(tzinfo=tzinfo)
+
+
 def parse_common(raw: dict[str, Any]) -> dict[str, Any]:
     """Parse the fields verified against the FLB48314TG1-H.
 
@@ -113,6 +142,7 @@ def parse_common(raw: dict[str, Any]) -> dict[str, Any]:
         "charge_current_limit": _scaled(raw, "BLVolCu", 1, 0, 10),
         "discharge_current_limit": _scaled(raw, "BLVolCu", 1, 1, 10),
         "serial_number": _raw(raw, "DevSN"),
+        "device_timestamp": _device_timestamp(raw),
         "estate": _raw(raw, "Estate"),
         "state": bstate,
         "fault": _raw(raw, "Bfault"),
@@ -265,6 +295,12 @@ _COMMON_SENSORS: tuple[SensorEntityDescription, ...] = (
     SensorEntityDescription(
         key="serial_number",
         translation_key="serial_number",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    SensorEntityDescription(
+        key="device_timestamp",
+        translation_key="device_timestamp",
+        device_class=SensorDeviceClass.TIMESTAMP,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     *(

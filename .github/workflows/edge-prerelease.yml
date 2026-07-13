@@ -1,0 +1,40 @@
+name: Edge Prerelease
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  prerelease:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Zip integration
+        run: |
+          cd custom_components/felicity_solar_local
+          zip -r "${GITHUB_WORKSPACE}/felicity_solar_local.zip" .
+
+      - name: Move edge tag to latest main
+        run: |
+          git tag -f edge
+          git push origin edge --force
+
+      - name: Publish edge prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: edge
+          name: "Edge (latest main)"
+          prerelease: true
+          target_commitish: main
+          body: |
+            Automated rolling build of the latest `main` branch (commit ${{ github.sha }}).
+
+            Not a stable release - this single tag moves and gets replaced on every push
+            to `main`, rather than accumulating a new tag per PR. Install for testing via
+            HACS custom repository (pin to this release) or by extracting
+            `felicity_solar_local.zip` into `custom_components/felicity_solar_local`.
+          files: felicity_solar_local.zip
