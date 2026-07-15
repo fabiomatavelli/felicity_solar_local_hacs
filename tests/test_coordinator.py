@@ -25,7 +25,9 @@ TZ_PATH = (
 
 
 def _make_coordinator(
-    hass: HomeAssistant, persistent_connection: bool = False
+    hass: HomeAssistant,
+    persistent_connection: bool = False,
+    invert_current_sign: bool = True,
 ) -> FelicityLocalCoordinator:
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -40,6 +42,7 @@ def _make_coordinator(
         port=53970,
         update_interval=30,
         persistent_connection=persistent_connection,
+        invert_current_sign=invert_current_sign,
     )
 
 
@@ -114,3 +117,51 @@ async def test_update_data_raises_update_failed_on_client_error(
 async def test_persistent_connection_flag_passed_to_client(hass: HomeAssistant) -> None:
     assert _make_coordinator(hass, persistent_connection=False).client.persistent is False
     assert _make_coordinator(hass, persistent_connection=True).client.persistent is True
+
+
+async def test_invert_current_sign_flips_current_and_power_by_default(
+    hass: HomeAssistant, sample_response: dict[str, Any]
+) -> None:
+    coordinator = _make_coordinator(hass)
+    raw_data = FLB48314TG1H_PROFILE.parse(sample_response)
+
+    with (
+        patch(API_PATH, AsyncMock(return_value=sample_response)),
+        patch(TZ_PATH, AsyncMock(return_value=None)),
+    ):
+        result = await coordinator._async_update_data()
+
+    assert result.data["current"] == -raw_data["current"]
+    assert result.data["power"] == -raw_data["power"]
+
+
+async def test_invert_current_sign_disabled_keeps_raw_sign(
+    hass: HomeAssistant, sample_response: dict[str, Any]
+) -> None:
+    coordinator = _make_coordinator(hass, invert_current_sign=False)
+    raw_data = FLB48314TG1H_PROFILE.parse(sample_response)
+
+    with (
+        patch(API_PATH, AsyncMock(return_value=sample_response)),
+        patch(TZ_PATH, AsyncMock(return_value=None)),
+    ):
+        result = await coordinator._async_update_data()
+
+    assert result.data["current"] == raw_data["current"]
+    assert result.data["power"] == raw_data["power"]
+
+
+async def test_invert_current_sign_is_null_safe(
+    hass: HomeAssistant, sample_response: dict[str, Any]
+) -> None:
+    coordinator = _make_coordinator(hass)
+    modified = {**sample_response, "BattList": [[54040, 65535], [-1, -1]]}
+
+    with (
+        patch(API_PATH, AsyncMock(return_value=modified)),
+        patch(TZ_PATH, AsyncMock(return_value=None)),
+    ):
+        result = await coordinator._async_update_data()
+
+    assert result.data["current"] is None
+    assert result.data["power"] is None

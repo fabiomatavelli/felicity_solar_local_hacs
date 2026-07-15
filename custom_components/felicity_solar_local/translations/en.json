@@ -26,11 +26,13 @@
         "data": {
           "persistent_connection": "Keep connection open",
           "update_interval": "Update interval (seconds)",
-          "enable_raw_data_sensor": "Enable raw data sensor"
+          "enable_raw_data_sensor": "Enable raw data sensor",
+          "invert_current_sign": "Invert current/power sign"
         },
         "data_description": {
           "persistent_connection": "Keep the TCP connection to the battery open between updates instead of reconnecting every time (this is the default). Allows much faster polling (down to 5s) at the cost of holding a socket open on the battery's WiFi module; the OS is asked to probe the connection while idle so a dropped connection is still detected between polls.",
-          "enable_raw_data_sensor": "Adds a diagnostic sensor exposing the full raw device payload as attributes. Off by default - at fast poll intervals, updating this sensor's large attribute set on every poll adds meaningful overhead. Turn it on for troubleshooting or when contributing a new battery model profile."
+          "enable_raw_data_sensor": "Adds a diagnostic sensor exposing the full raw device payload as attributes. Off by default - at fast poll intervals, updating this sensor's large attribute set on every poll adds meaningful overhead. Turn it on for troubleshooting or when contributing a new battery model profile.",
+          "invert_current_sign": "Home Assistant's convention for batteries is negative current/power while charging and positive while discharging - this battery reports the opposite. On by default so the sign matches Home Assistant out of the box; turn off to pass through the battery's raw sign unmodified."
         }
       }
     },

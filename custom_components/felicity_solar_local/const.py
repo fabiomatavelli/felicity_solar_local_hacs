@@ -7,6 +7,7 @@ CONF_PORT = "port"
 CONF_UPDATE_INTERVAL = "update_interval"
 CONF_PERSISTENT_CONNECTION = "persistent_connection"
 CONF_ENABLE_RAW_DATA_SENSOR = "enable_raw_data_sensor"
+CONF_INVERT_CURRENT_SIGN = "invert_current_sign"
 
 DEFAULT_PORT = 53970
 DEFAULT_UPDATE_INTERVAL = 5
@@ -15,6 +16,10 @@ DEFAULT_PERSISTENT_CONNECTION = True
 # payload on every update, which at the fast default poll interval adds meaningful
 # recorder/frontend overhead most users don't need day-to-day.
 DEFAULT_ENABLE_RAW_DATA_SENSOR = False
+# On by default: the battery reports current/power with the opposite sign of Home
+# Assistant's convention (negative while charging, positive while discharging) - see
+# coordinator.py's _invert_current_sign.
+DEFAULT_INVERT_CURRENT_SIGN = True
 
 # Floor when reconnecting every poll (persistent connection disabled) - keeps connection
 # churn against the battery's embedded TCP stack reasonable.
