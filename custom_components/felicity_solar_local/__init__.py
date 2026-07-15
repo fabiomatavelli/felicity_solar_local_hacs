@@ -9,9 +9,11 @@ from homeassistant.core import HomeAssistant
 
 from .const import (
     CONF_HOST,
+    CONF_INVERT_CURRENT_SIGN,
     CONF_PERSISTENT_CONNECTION,
     CONF_PORT,
     CONF_UPDATE_INTERVAL,
+    DEFAULT_INVERT_CURRENT_SIGN,
     DEFAULT_PERSISTENT_CONNECTION,
     DEFAULT_UPDATE_INTERVAL,
 )
@@ -32,6 +34,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: FelicityLocalConfigEntry
     persistent_connection = entry.options.get(
         CONF_PERSISTENT_CONNECTION, DEFAULT_PERSISTENT_CONNECTION
     )
+    invert_current_sign = entry.options.get(
+        CONF_INVERT_CURRENT_SIGN, DEFAULT_INVERT_CURRENT_SIGN
+    )
 
     coordinator = FelicityLocalCoordinator(
         hass=hass,
@@ -40,6 +45,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: FelicityLocalConfigEntry
         port=port,
         update_interval=update_interval,
         persistent_connection=persistent_connection,
+        invert_current_sign=invert_current_sign,
     )
     await coordinator.async_config_entry_first_refresh()
 

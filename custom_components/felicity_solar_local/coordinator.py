@@ -40,6 +40,7 @@ class FelicityLocalCoordinator(DataUpdateCoordinator[FelicityBatteryData]):
         port: int,
         update_interval: int,
         persistent_connection: bool = False,
+        invert_current_sign: bool = True,
     ) -> None:
         super().__init__(
             hass,
@@ -53,6 +54,7 @@ class FelicityLocalCoordinator(DataUpdateCoordinator[FelicityBatteryData]):
         self.client = FelicityLocalClient(
             host, port, timeout=DEFAULT_TIMEOUT, persistent=persistent_connection
         )
+        self._invert_current_sign = invert_current_sign
         self._tz_offset_minutes: int | None = None
         self._tz_offset_fetched = False
 
@@ -75,4 +77,23 @@ class FelicityLocalCoordinator(DataUpdateCoordinator[FelicityBatteryData]):
             raw = {**raw, "timeZMin": self._tz_offset_minutes}
 
         profile = select_profile(raw)
-        return FelicityBatteryData(raw=raw, profile=profile, data=profile.parse(raw))
+        data = profile.parse(raw)
+        if self._invert_current_sign:
+            data = _invert_current_sign(data)
+        return FelicityBatteryData(raw=raw, profile=profile, data=data)
+
+
+def _invert_current_sign(data: dict[str, Any]) -> dict[str, Any]:
+    """Flip current/power sign to match Home Assistant's battery convention.
+
+    This battery reports current/power with the opposite sign of what Home Assistant
+    expects (negative while charging, positive while discharging) - see const.py's
+    DEFAULT_INVERT_CURRENT_SIGN.
+    """
+    current = data.get("current")
+    power = data.get("power")
+    return {
+        **data,
+        "current": -current if current is not None else None,
+        "power": -power if power is not None else None,
+    }

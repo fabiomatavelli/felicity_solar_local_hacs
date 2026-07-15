@@ -19,6 +19,7 @@ from custom_components.felicity_solar_local.api import (
 from custom_components.felicity_solar_local.const import (
     CONF_ENABLE_RAW_DATA_SENSOR,
     CONF_HOST,
+    CONF_INVERT_CURRENT_SIGN,
     CONF_PERSISTENT_CONNECTION,
     CONF_PORT,
     CONF_UPDATE_INTERVAL,
@@ -116,6 +117,7 @@ async def test_options_flow_updates_interval(hass: HomeAssistant) -> None:
             CONF_UPDATE_INTERVAL: 60,
             CONF_PERSISTENT_CONNECTION: False,
             CONF_ENABLE_RAW_DATA_SENSOR: False,
+            CONF_INVERT_CURRENT_SIGN: True,
         },
     )
 
@@ -124,6 +126,7 @@ async def test_options_flow_updates_interval(hass: HomeAssistant) -> None:
         CONF_UPDATE_INTERVAL: 60,
         CONF_PERSISTENT_CONNECTION: False,
         CONF_ENABLE_RAW_DATA_SENSOR: False,
+        CONF_INVERT_CURRENT_SIGN: True,
     }
 
 
@@ -144,6 +147,7 @@ async def test_options_flow_rejects_low_interval_in_one_shot_mode(
             CONF_UPDATE_INTERVAL: 5,
             CONF_PERSISTENT_CONNECTION: False,
             CONF_ENABLE_RAW_DATA_SENSOR: False,
+            CONF_INVERT_CURRENT_SIGN: True,
         },
     )
 
@@ -168,6 +172,7 @@ async def test_options_flow_allows_low_interval_when_persistent(
             CONF_UPDATE_INTERVAL: 5,
             CONF_PERSISTENT_CONNECTION: True,
             CONF_ENABLE_RAW_DATA_SENSOR: False,
+            CONF_INVERT_CURRENT_SIGN: True,
         },
     )
 
@@ -176,6 +181,7 @@ async def test_options_flow_allows_low_interval_when_persistent(
         CONF_UPDATE_INTERVAL: 5,
         CONF_PERSISTENT_CONNECTION: True,
         CONF_ENABLE_RAW_DATA_SENSOR: False,
+        CONF_INVERT_CURRENT_SIGN: True,
     }
 
 
@@ -194,11 +200,35 @@ async def test_options_flow_enables_raw_data_sensor(hass: HomeAssistant) -> None
             CONF_UPDATE_INTERVAL: 5,
             CONF_PERSISTENT_CONNECTION: True,
             CONF_ENABLE_RAW_DATA_SENSOR: True,
+            CONF_INVERT_CURRENT_SIGN: True,
         },
     )
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["data"][CONF_ENABLE_RAW_DATA_SENSOR] is True
+
+
+async def test_options_flow_disables_invert_current_sign(hass: HomeAssistant) -> None:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="test-serial",
+        data={CONF_HOST: "192.168.1.50", CONF_PORT: 53970},
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            CONF_UPDATE_INTERVAL: 5,
+            CONF_PERSISTENT_CONNECTION: True,
+            CONF_ENABLE_RAW_DATA_SENSOR: False,
+            CONF_INVERT_CURRENT_SIGN: False,
+        },
+    )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"][CONF_INVERT_CURRENT_SIGN] is False
 
 
 async def test_options_flow_defaults_to_persistent_five_seconds(
@@ -219,3 +249,4 @@ async def test_options_flow_defaults_to_persistent_five_seconds(
     assert defaults[CONF_PERSISTENT_CONNECTION] is True
     assert defaults[CONF_UPDATE_INTERVAL] == 5
     assert defaults[CONF_ENABLE_RAW_DATA_SENSOR] is False
+    assert defaults[CONF_INVERT_CURRENT_SIGN] is True

@@ -19,10 +19,12 @@ from .api import (
 from .const import (
     CONF_ENABLE_RAW_DATA_SENSOR,
     CONF_HOST,
+    CONF_INVERT_CURRENT_SIGN,
     CONF_PERSISTENT_CONNECTION,
     CONF_PORT,
     CONF_UPDATE_INTERVAL,
     DEFAULT_ENABLE_RAW_DATA_SENSOR,
+    DEFAULT_INVERT_CURRENT_SIGN,
     DEFAULT_PERSISTENT_CONNECTION,
     DEFAULT_PORT,
     DEFAULT_UPDATE_INTERVAL,
@@ -118,6 +120,9 @@ class FelicityLocalOptionsFlow(config_entries.OptionsFlow):
         current_raw_data = self.config_entry.options.get(
             CONF_ENABLE_RAW_DATA_SENSOR, DEFAULT_ENABLE_RAW_DATA_SENSOR
         )
+        current_invert_sign = self.config_entry.options.get(
+            CONF_INVERT_CURRENT_SIGN, DEFAULT_INVERT_CURRENT_SIGN
+        )
 
         if user_input is not None:
             interval = int(user_input[CONF_UPDATE_INTERVAL])
@@ -131,6 +136,7 @@ class FelicityLocalOptionsFlow(config_entries.OptionsFlow):
             current_interval = interval
             current_persistent = persistent
             current_raw_data = bool(user_input[CONF_ENABLE_RAW_DATA_SENSOR])
+            current_invert_sign = bool(user_input[CONF_INVERT_CURRENT_SIGN])
 
         schema = vol.Schema(
             {
@@ -149,6 +155,9 @@ class FelicityLocalOptionsFlow(config_entries.OptionsFlow):
                 ),
                 vol.Required(
                     CONF_ENABLE_RAW_DATA_SENSOR, default=current_raw_data
+                ): selector.BooleanSelector(),
+                vol.Required(
+                    CONF_INVERT_CURRENT_SIGN, default=current_invert_sign
                 ): selector.BooleanSelector(),
             }
         )
