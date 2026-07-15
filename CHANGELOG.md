@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.0](https://github.com/fabiomatavelli/ha-felicity-solar-local/compare/v0.3.0...v0.4.0) (2026-07-15)
+
+
+### Features
+
+* **coordinator:** invert current/power sign to match HA battery convention ([#18](https://github.com/fabiomatavelli/ha-felicity-solar-local/issues/18)) ([14a5d58](https://github.com/fabiomatavelli/ha-felicity-solar-local/commit/14a5d58642f15e85083f7e8ed64df29010219826))
+* **sensor:** add aggregated max/min battery temperature sensors ([#16](https://github.com/fabiomatavelli/ha-felicity-solar-local/issues/16)) ([65db195](https://github.com/fabiomatavelli/ha-felicity-solar-local/commit/65db195a4b8ea2be4dfd25c225e37830ff34290e))
+
 ## [0.3.0](https://github.com/fabiomatavelli/ha-felicity-solar-local/compare/v0.2.1...v0.3.0) (2026-07-13)
 
 
