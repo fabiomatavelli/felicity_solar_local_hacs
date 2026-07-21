@@ -10,6 +10,7 @@ import pytest
 
 from custom_components.felicity_solar_local.profiles import (
     DEFAULT_PROFILE,
+    FLA24100_PROFILE,
     FLB48314TG1H_PROFILE,
     select_profile,
 )
@@ -149,3 +150,69 @@ def test_parse_device_timestamp_is_none_for_missing_or_malformed_date(
     modified = {**sample_response, "date": date_value}
     data = FLB48314TG1H_PROFILE.parse(modified)
     assert data["device_timestamp"] is None
+
+
+def test_select_profile_matches_fla24100(fla24100_response: dict[str, Any]) -> None:
+    assert select_profile(fla24100_response) is FLA24100_PROFILE
+    assert FLA24100_PROFILE.confidence == "verified"
+
+
+def test_fla24100_temperatures_come_from_btemlist_not_btemp(
+    fla24100_response: dict[str, Any],
+) -> None:
+    assert fla24100_response["BTemp"][1] == [256, 512]
+    data = FLA24100_PROFILE.parse(fla24100_response)
+    assert data["temperature_1"] == 25.0
+    assert data["temperature_2"] == 25.0
+    assert data["temperature_3"] == 25.0
+    assert data["temperature_4"] == 25.0
+    assert data["temperature_max"] == 25.0
+    assert data["temperature_min"] == 25.0
+
+
+def test_fla24100_temperature_sentinel_slots_are_missing(
+    fla24100_response: dict[str, Any],
+) -> None:
+    modified = {
+        **fla24100_response,
+        "BtemList": [[250, 240, 32767, 65535, 32767, 32767, 32767, 32767]],
+    }
+    data = FLA24100_PROFILE.parse(modified)
+    assert data["temperature_1"] == 25.0
+    assert data["temperature_2"] == 24.0
+    assert data["temperature_3"] is None
+    assert data["temperature_4"] is None
+    assert data["temperature_max"] == 25.0
+    assert data["temperature_min"] == 24.0
+
+
+def test_fla24100_temperature_max_min_are_none_when_all_probes_sentinel(
+    fla24100_response: dict[str, Any],
+) -> None:
+    modified = {
+        **fla24100_response,
+        "BtemList": [[32767, 32767, 32767, 32767, 32767, 32767, 32767, 32767]],
+    }
+    data = FLA24100_PROFILE.parse(modified)
+    assert data["temperature_max"] is None
+    assert data["temperature_min"] is None
+
+
+def test_fla24100_core_fields_scale_like_common_profile(
+    fla24100_response: dict[str, Any],
+) -> None:
+    data = FLA24100_PROFILE.parse(fla24100_response)
+
+    assert data["voltage"] == 27.41
+    assert data["current"] == 0.0
+    assert data["power"] == 0.0
+    assert data["soc"] == 100.0
+    assert data["soh"] == 100.0
+    assert data["capacity"] == 100.0
+    assert data["max_cell_voltage"] == 3.429
+    assert data["min_cell_voltage"] == 3.415
+    assert data["cell_1_voltage"] == 3.428
+    assert data["cell_8_voltage"] == 3.429
+    assert data["charging_state"] == "standby"
+    assert data["warning"] == 4
+    assert data["serial_number"] == "074502400000000000"
