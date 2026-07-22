@@ -21,3 +21,10 @@ def sample_response() -> dict[str, Any]:
     """Raw device JSON captured live from a Felicity Solar FLB48314TG1-H."""
     path = Path(__file__).parent / "fixtures" / "sample_response.json"
     return json.loads(path.read_text())
+
+
+@pytest.fixture
+def fla24100_response() -> dict[str, Any]:
+    """Raw device JSON captured live from a Felicity Solar FLA24100."""
+    path = Path(__file__).parent / "fixtures" / "fla24100_response.json"
+    return json.loads(path.read_text())

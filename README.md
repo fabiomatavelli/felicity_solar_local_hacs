@@ -91,6 +91,7 @@ python3 scripts/probe.py <battery-ip>
 | Model | Type / SubType | Status | Notes |
 |---|---|---|---|
 | Felicity Solar FLB48314TG1-H | 112 / 7353 | ✅ Verified | Field scaling cross-checked live against the same battery's cloud API readings. See `profiles.py`. |
+| Felicity Solar FLA24100 | 112 / 6100 | ✅ Verified | 24 V / 8-cell pack. Temperatures are sourced from `BtemList` and were cross-checked live against the vendor app; See `profiles.py`. |
 | Other Felicity WiFi batteries | — | ⚠️ Untested (best-effort) | Same protocol assumed, falls back to a generic profile with unverified scaling. [Contribute a verified profile](CONTRIBUTING.md#adding-a-new-battery-model-profile) for your model. |
 
 This integration was built and verified against a **Felicity Solar FLB48314TG1-H**
