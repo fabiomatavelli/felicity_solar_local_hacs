@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/fabiomatavelli/ha-felicity-solar-local/compare/v0.5.0...v0.5.1) (2026-07-23)
+
+
+### Bug Fixes
+
+* **ci:** drop unneeded brands ignore from hacs validation ([#22](https://github.com/fabiomatavelli/ha-felicity-solar-local/issues/22)) ([8382189](https://github.com/fabiomatavelli/ha-felicity-solar-local/commit/83821892a16fad2e94683bd91f02e3024814e505))
+
 ## [0.5.0](https://github.com/fabiomatavelli/ha-felicity-solar-local/compare/v0.4.0...v0.5.0) (2026-07-22)
 
 
